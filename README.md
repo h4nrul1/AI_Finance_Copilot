@@ -60,32 +60,92 @@ Without an API key, a keyword-based fallback calls the same tools, so the demo b
 - Optional OpenAI API integration
 - Local browser storage for demo persistence
 
-## Running Locally
+## Getting Started 
+
+### 1. Prerequisites
+
+- **Node.js 20.9 or newer** (check with `node -v`; install from [nodejs.org](https://nodejs.org) if needed)
+- **Git**, and access to this GitHub repo (ask the owner to add you as a collaborator)
+- *Optional:* an **OpenAI API key** for the real AI copilot. Without one, the app still works using the offline copilot.
+
+### 2. Clone and install
 
 ```bash
+git clone https://github.com/h4nrul1/AI_Finance_Copilot.git
+cd AI_Finance_Copilot
 npm install
-npm run dev
 ```
 
-Open the local URL printed by Next.js.
+### 3. Add your own API key (optional)
 
-## AI Setup
+Create a file named `.env.local` in the project root:
 
 ```bash
-OPENAI_API_KEY=your_key_here
+OPENAI_API_KEY=sk-your-own-key
+# Optional; this is the default:
 OPENAI_MODEL=gpt-4o-mini
 ```
 
-If `OPENAI_API_KEY` is missing or the API request fails, the app automatically uses the deterministic mock copilot. The demo remains fully usable without external services.
+- Use **your own** key from [platform.openai.com](https://platform.openai.com) → API keys. Never share keys in chat or commit them; `.env.local` is already in `.gitignore`.
+- The API is prepaid: add credits under **Settings → Billing** (adding a card alone is not enough). $5 lasts a long time with `gpt-4o-mini`. Set a monthly budget and turn off auto-recharge.
+- Don't switch `OPENAI_MODEL` to a GPT-5-family model yet: the request sends a custom `temperature`, which those models may reject.
 
-## Tests and Build
+### 4. Run it
 
 ```bash
-npm test
-npm run build
+npm run dev
 ```
 
-The tests cover the projection engine, scenario tools, verdict rules and strictness settings, spending limits, copilot tool routing and the OpenAI tool-calling loop, and the API rate limiter.
+Open [http://localhost:3000](http://localhost:3000). After editing `.env.local`, stop the server (`Ctrl+C`) and start it again.
+
+**Check the copilot:** on `/copilot`, ask "Can I afford a $500 trip in November?" Replies labeled **Copilot · OpenAI** mean your key works. **Copilot · Mock** means the app fell back to offline mode; the terminal running `npm run dev` shows the reason in a `[copilot] OpenAI path failed…` line (usually a missing key or no credits).
+
+### 5. Before every push
+
+```bash
+npm test        # 51 tests: engine, verdicts, copilot routing, rate limiter
+npm run lint    # TypeScript type check
+npm run build   # optional: the same production build Vercel runs
+```
+
+If you change calculations (`lib/finance/*`) or verdict rules, add or update a test in `tests/`.
+
+## How We Work
+
+- **Never commit to `main` directly.** Create a branch, push it, and open a pull request:
+
+  ```bash
+  git checkout main && git pull
+  git checkout -b your-feature-name
+  # ...make changes, run the checks above...
+  git add .
+  git commit -m "Describe the change"
+  git push -u origin your-feature-name
+  ```
+
+- If the repo is connected to Vercel, each pushed branch gets its own preview link. Try each other's work there before merging.
+- Merging into `main` deploys the live site.
+- Divide work by area to avoid merge conflicts:
+
+| Area | Where it lives |
+|---|---|
+| Calculation engine and verdicts | `lib/finance/` (with tests in `tests/`) |
+| AI copilot (tools, prompt, OpenAI loop) | `lib/ai/`, `app/api/copilot/route.ts`, `components/copilot/` |
+| Pages | `app/<page>/page.tsx` |
+| Shared UI and state | `components/` (state lives in `components/providers/finance-provider.tsx`) |
+| Data types and demo data | `types/finance.ts`, `lib/data/seed.ts` |
+
+- This project uses **Next.js 16**, which differs from older versions. If you use an AI coding assistant, it should read `AGENTS.md` first (Claude Code does this automatically via `CLAUDE.md`), and check the docs in `node_modules/next/dist/docs/`.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Copilot always says **Mock** | Check `.env.local` exists in the project root, restart `npm run dev`, then read the `[copilot]` line in the terminal. |
+| "You're asking questions quickly" | The copilot is rate-limited to 10 questions/minute and 100/day per visitor. Wait, or restart the dev server to clear the counts locally. |
+| Odd or outdated numbers in the app | Your plan is saved in the browser. Click **Reset Demo Data** in the sidebar. |
+| Build or type errors mentioning `.next/` after renaming or deleting a page | Stop the dev server, delete the generated cache with `rm -rf .next`, and run again. |
+| Port 3000 already in use | Stop the other `npm run dev`, or run `npm run dev -- -p 3001`. |
 
 ## Demo Walkthrough
 
