@@ -2,6 +2,10 @@
 
 An AI-powered financial planning app for college students. It focuses on a semester planning window instead of a generic monthly budget.
 
+**Live demo: [ai-finance-copilot-xi.vercel.app](https://ai-finance-copilot-xi.vercel.app/)**
+
+No sign-up needed. The demo starts with a sample student plan, and any changes you make are saved only in your own browser (use **Reset Demo Data** in the sidebar to start over). The live site updates automatically whenever `main` changes.
+
 ## What It Does
 
 The app helps users answer:
