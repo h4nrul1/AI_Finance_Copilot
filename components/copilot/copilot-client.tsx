@@ -7,16 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useFinance } from "@/components/providers/finance-provider";
-import { VerdictCard } from "@/components/scenarios/verdict-card";
 import type { CopilotAnswer, CopilotToolCall } from "@/lib/ai/copilot";
-import type { ScenarioSummary } from "@/types/finance";
+import type { CopilotDetail } from "@/lib/ai/tool-registry";
+import { CopilotDetailCard } from "./detail-cards";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   toolCalls?: CopilotToolCall[];
-  scenario?: ScenarioSummary;
+  details?: CopilotDetail[];
   mode?: "mock" | "openai";
 }
 
@@ -24,6 +24,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_semester_snapshot: "Semester snapshot",
   get_spending_by_category: "Spending by category",
   check_purchase: "Purchase check",
+  find_max_affordable: "Spending limit",
   simulate_investment: "Investment simulation",
   simulate_income_loss: "Income-loss simulation",
   simulate_recurring_expense_change: "Recurring expense change"
@@ -32,6 +33,7 @@ const TOOL_LABELS: Record<string, string> = {
 const suggestions = [
   "Can I afford a $500 trip in November?",
   "Can I afford a new laptop?",
+  "How much can I spend on a laptop in November?",
   "Can I afford a $3,000 trip in December?",
   "How much can I safely spend each week?",
   "What happens if I stop working in October?",
@@ -70,10 +72,15 @@ export function CopilotClient() {
     setInput("");
     setLoading(true);
     const userMessage: Message = { id: `u-${Date.now()}`, role: "user", content: question };
-    // Prior turns let the model resolve follow-ups like "what about $300 instead?".
+    // Prior turns, plus which tools ran with what inputs, let the model resolve follow-ups like "what about $300 instead?".
     const history = messages
       .filter((message) => message.id !== "welcome")
-      .map(({ role, content }) => ({ role, content }));
+      .map(({ role, content, toolCalls }) => ({
+        role,
+        content: toolCalls?.length
+          ? `${content}\n[Tools used: ${toolCalls.map((call) => `${call.name} ${JSON.stringify(call.input)}`).join("; ")}]`
+          : content
+      }));
     setMessages((current) => [...current, userMessage]);
 
     try {
@@ -90,7 +97,7 @@ export function CopilotClient() {
           role: "assistant",
           content: answer.message,
           toolCalls: answer.toolCalls,
-          scenario: answer.scenario,
+          details: answer.details,
           mode: answer.mode
         }
       ]);
@@ -128,9 +135,11 @@ export function CopilotClient() {
                     {message.role === "user" ? "You" : `Copilot${message.mode === "openai" ? " · OpenAI" : message.mode === "mock" ? " · Mock" : ""}`}
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
-                  {message.scenario ? (
-                    <VerdictCard className="mt-3" verdict={message.scenario.verdict} summary={message.scenario} />
-                  ) : null}
+                  {message.details?.map((detail, index) => (
+                    <div key={`${detail.kind}-${index}`} className="mt-3">
+                      <CopilotDetailCard detail={detail} />
+                    </div>
+                  ))}
                   {message.toolCalls?.length ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {message.toolCalls.map((call, index) => (

@@ -1,7 +1,17 @@
-import type { FinanceState, FinancialProjection, Scenario, ScenarioResult, ScenarioSummary } from "@/types/finance";
+import type {
+  FinanceState,
+  FinancialProjection,
+  MaxAffordableResult,
+  Scenario,
+  ScenarioResult,
+  ScenarioSummary,
+  VerdictLevel
+} from "@/types/finance";
 import { addDays, asDate, expandRecurringDates, toISODate } from "./dates";
 import { buildProjection, cloneState } from "./engine";
 import { assessScenario } from "./verdict";
+import { getVerdictSettings } from "./verdict-settings";
+import { formatDate } from "@/lib/utils";
 
 export function calculateSemesterProjection(state: FinanceState) {
   return buildProjection(state);
@@ -53,7 +63,15 @@ export function simulateRecurringExpenseChange(state: FinanceState, expenseName:
     const firstChanged = expandRecurringDates(expense.startDate, scheduleEnd, frequency, startDate, scheduleEnd)[0];
     if (!firstChanged) return [expense];
 
-    const changed = { ...expense, id: `${expense.id}-changed`, amount: expense.amount + amountDelta, startDate: firstChanged };
+    // Label the new part so the plan doesn't show two identical names; strip an earlier label to avoid nesting.
+    const baseName = expense.name.replace(/ \(from [^)]*\)$/, "");
+    const changed = {
+      ...expense,
+      id: `${expense.id}-changed`,
+      name: firstChanged === expense.startDate ? expense.name : `${baseName} (from ${formatDate(firstChanged)})`,
+      amount: expense.amount + amountDelta,
+      startDate: firstChanged
+    };
     if (firstChanged === expense.startDate) return [changed];
     return [{ ...expense, endDate: toISODate(addDays(asDate(firstChanged), -1)) }, changed];
   });
@@ -126,5 +144,38 @@ export function summarizeScenarioResult(state: FinanceState, result: ScenarioRes
     endingDifference: result.endingDifference,
     weeklyDifference: Math.round(result.weeklyDifference),
     verdict: result.verdict
+  };
+}
+
+/**
+ * Finds the largest one-time purchase on `date` that stays "Comfortable", and the largest that is not
+ * "Not recommended". Verdicts only get worse as the amount grows, so a binary search over whole dollars is exact.
+ */
+export function findMaxAffordable(state: FinanceState, date: string): MaxAffordableResult {
+  const baseline = buildProjection(state);
+  const levelAt = (amount: number): VerdictLevel =>
+    assessScenario(state, baseline, buildProjection(simulatePurchase(state, amount, date))).level;
+  const upperBound = Math.max(0, Math.ceil(state.cash.checking + baseline.expectedRemainingIncome));
+
+  const largestWhere = (ok: (level: VerdictLevel) => boolean) => {
+    if (!ok(levelAt(0))) return 0;
+    let low = 0;
+    let high = upperBound;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (ok(levelAt(mid))) low = mid;
+      else high = mid - 1;
+    }
+    return low;
+  };
+
+  const { comfortMargin, weeklyDropLimit } = getVerdictSettings(state);
+  return {
+    date,
+    comfortableMax: largestWhere((level) => level === "comfortable"),
+    tightMax: largestWhere((level) => level !== "not-recommended"),
+    goal: state.cash.targetEndingBuffer,
+    comfortMargin,
+    weeklyDropLimit
   };
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { demoState, presetScenarios } from "@/lib/data/seed";
+import { demoState } from "@/lib/data/seed";
+import type { Scenario } from "@/types/finance";
 import { buildProjection } from "@/lib/finance/engine";
 import {
   compareScenarioToBaseline,
@@ -7,6 +8,8 @@ import {
   simulatePurchase,
   simulateRecurringExpenseChange
 } from "@/lib/finance/tools";
+
+const chicagoTrip: Scenario = { id: "trip", name: "Chicago Trip", description: "", type: "purchase", amount: 500, date: "2026-11-12" };
 
 describe("semester projection engine", () => {
   it("calculates projected ending balance from current cash and future events", () => {
@@ -57,7 +60,7 @@ describe("scenario tools", () => {
   });
 
   it("compares a scenario to the baseline", () => {
-    const result = compareScenarioToBaseline(demoState, presetScenarios[0]);
+    const result = compareScenarioToBaseline(demoState, chicagoTrip);
 
     expect(result.endingDifference).toBe(-500);
     expect(result.scenarioProjection.projectedEndingBalance).toBe(3115);

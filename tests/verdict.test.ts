@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { demoState, presetScenarios } from "@/lib/data/seed";
+import { demoState } from "@/lib/data/seed";
 import { buildProjection } from "@/lib/finance/engine";
-import { compareScenarioToBaseline, simulateRecurringExpenseChange } from "@/lib/finance/tools";
+import { compareScenarioToBaseline, findMaxAffordable, simulateRecurringExpenseChange } from "@/lib/finance/tools";
+import { getVerdictSettings, presetSettings } from "@/lib/finance/verdict-settings";
 import type { Scenario } from "@/types/finance";
+
+const chicagoTrip: Scenario = { id: "trip", name: "Chicago Trip", description: "", type: "purchase", amount: 500, date: "2026-11-12" };
 
 function purchase(amount: number, date: string): Scenario {
   return { id: "test", name: "Test purchase", description: "", type: "purchase", amount, date };
@@ -10,7 +13,7 @@ function purchase(amount: number, date: string): Scenario {
 
 describe("affordability verdicts", () => {
   it("rates a purchase that leaves a large cushion as comfortable", () => {
-    const result = compareScenarioToBaseline(demoState, presetScenarios[0]);
+    const result = compareScenarioToBaseline(demoState, chicagoTrip);
 
     expect(result.verdict.level).toBe("comfortable");
     expect(result.verdict.suggestion).toBeUndefined();
@@ -61,5 +64,59 @@ describe("recurring expense changes", () => {
     const result = buildProjection(simulateRecurringExpenseChange(demoState, "Rent", -50, "2026-10-01"));
 
     expect(result.projectedEndingBalance).toBe(baseline + 150);
+  });
+});
+
+describe("spending limits", () => {
+  it("finds the largest comfortable and tight purchase amounts", () => {
+    const result = findMaxAffordable(demoState, "2026-11-28");
+
+    // Comfortable ends once weekly spending drops 25%; tight ends once you'd finish below the $1,000 goal.
+    expect(result.comfortableMax).toBe(653);
+    expect(result.tightMax).toBe(2615);
+    expect(compareScenarioToBaseline(demoState, purchase(result.comfortableMax, "2026-11-28")).verdict.level).toBe("comfortable");
+    expect(compareScenarioToBaseline(demoState, purchase(result.comfortableMax + 1, "2026-11-28")).verdict.level).toBe("tight");
+    expect(compareScenarioToBaseline(demoState, purchase(result.tightMax + 1, "2026-11-28")).verdict.level).toBe("not-recommended");
+  });
+
+  it("returns zero when the plan is already below the goal", () => {
+    const broke = { ...demoState, cash: { ...demoState.cash, checking: 500 } };
+
+    expect(findMaxAffordable(broke, "2026-11-28")).toMatchObject({ comfortableMax: 0, tightMax: 0 });
+  });
+});
+
+describe("verdict settings", () => {
+  it("lets a cautious student flag smaller purchases as tight", () => {
+    const cautious = { ...demoState, verdictSettings: presetSettings("cautious") };
+
+    expect(compareScenarioToBaseline(demoState, purchase(500, "2026-11-12")).verdict.level).toBe("comfortable");
+    expect(compareScenarioToBaseline(cautious, purchase(500, "2026-11-12")).verdict.level).toBe("tight");
+  });
+
+  it("explains which rule produced the verdict", () => {
+    const tight = compareScenarioToBaseline(demoState, purchase(700, "2026-10-20")).verdict;
+
+    expect(tight.rule).toContain("your limit is 25%");
+  });
+
+  it("never lets settings override the overdraft and goal rules", () => {
+    const lenient = { ...demoState, verdictSettings: { preset: "custom" as const, comfortMargin: 0, weeklyDropLimit: 0.75 } };
+
+    expect(compareScenarioToBaseline(lenient, purchase(3000, "2026-12-01")).verdict.level).toBe("not-recommended");
+  });
+
+  it("clamps out-of-range custom values and falls back for old saved plans", () => {
+    const wild = { ...demoState, verdictSettings: { preset: "custom" as const, comfortMargin: -50, weeklyDropLimit: 5 } };
+
+    expect(getVerdictSettings(wild)).toEqual({ preset: "custom", comfortMargin: 0, weeklyDropLimit: 0.75 });
+    expect(getVerdictSettings(demoState).preset).toBe("balanced");
+  });
+
+  it("uses the same comfort margin for the semester health badge", () => {
+    const strict = { ...demoState, verdictSettings: { preset: "custom" as const, comfortMargin: 3000, weeklyDropLimit: 0.25 } };
+
+    expect(buildProjection(demoState).semesterHealth).toBe("On Track");
+    expect(buildProjection(strict).semesterHealth).toBe("Tight");
   });
 });

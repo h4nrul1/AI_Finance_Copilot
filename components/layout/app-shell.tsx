@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 const nav = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/semester", label: "Semester Plan", icon: Settings2 },
-  { href: "/transactions", label: "Transactions", icon: ReceiptText },
+  { href: "/spending", label: "Spending", icon: ReceiptText },
   { href: "/scenarios", label: "Scenario Lab", icon: LineChart },
   { href: "/aid", label: "Financial Aid", icon: FileText },
   { href: "/learn", label: "Learn", icon: BookOpen },

@@ -4,6 +4,7 @@ import { CalendarClock, TrendingDown, TrendingUp } from "lucide-react";
 import { CashFlowChart } from "@/components/charts/cash-flow-chart";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { SafeSpendingBreakdown } from "@/components/dashboard/safe-spending-breakdown";
+import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
 import { AffordabilityWidget } from "@/components/scenarios/affordability-widget";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function OverviewPage() {
   const { state, projection } = useFinance();
-  const upcomingExpense = projection.upcomingEvents.find((event) => event.kind === "expense");
+  const upcomingExpense = projection.upcomingEvents.find((event) => event.kind === "expense" && event.required);
   const healthTone = projection.semesterHealth === "On Track" ? "good" : projection.semesterHealth === "Tight" ? "warn" : "bad";
 
   return (
@@ -38,7 +39,7 @@ export default function OverviewPage() {
           label="Projected End Cash"
           value={formatCurrency(projection.projectedEndingBalance)}
           detail={`After planned income and expenses through ${formatDate(state.semester.endDate)}`}
-          tone="good"
+          tone={healthTone === "good" ? "good" : "warn"}
         />
         <MetricCard
           label="Safe Weekly Spending"
@@ -47,7 +48,7 @@ export default function OverviewPage() {
           tone="good"
         />
         <MetricCard
-          label="Upcoming Major Expense"
+          label="Next Required Expense"
           value={upcomingExpense ? formatCurrency(upcomingExpense.amount) : "None"}
           detail={upcomingExpense ? `${upcomingExpense.name} · ${formatDate(upcomingExpense.date)}` : "No major required expense found"}
           tone="warn"
@@ -66,7 +67,7 @@ export default function OverviewPage() {
             <div className="flex items-start gap-3">
               <TrendingUp className="mt-1 text-sage" size={20} />
               <p className="text-sm leading-6 text-muted">
-                At the current spending rate, Hanru is projected to finish with{" "}
+                At the current spending rate, {state.student.name.split(" ")[0]} is projected to finish with{" "}
                 <strong className="text-ink">{formatCurrency(projection.projectedEndingBalance)}</strong> available.
               </p>
             </div>
@@ -91,6 +92,7 @@ export default function OverviewPage() {
 
       <AffordabilityWidget />
       <SafeSpendingBreakdown breakdown={projection.safeWeekly} />
+      <UpcomingEvents events={projection.upcomingEvents} endDate={state.semester.endDate} />
     </div>
   );
 }

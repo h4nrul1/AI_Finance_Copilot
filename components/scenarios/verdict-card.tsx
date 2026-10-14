@@ -29,6 +29,12 @@ export function VerdictCard({ verdict, summary, className }: { verdict: Verdict;
               <li key={reason}>{reason}</li>
             ))}
           </ul>
+          {verdict.rule ? (
+            <p className="text-xs leading-5 text-muted">
+              <span className="font-semibold text-ink">Why this verdict: </span>
+              {verdict.rule}
+            </p>
+          ) : null}
           {verdict.suggestion ? (
             <p className="rounded-md bg-paper px-3 py-2 text-sm leading-6 text-ink">
               <span className="font-semibold">Suggestion: </span>

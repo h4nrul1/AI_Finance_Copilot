@@ -8,6 +8,7 @@ import type {
   UpcomingEvent
 } from "@/types/finance";
 import { asDate, eachWeek, expandRecurringDates, toISODate, weeksBetween } from "./dates";
+import { getVerdictSettings } from "./verdict-settings";
 
 interface CashEvent {
   id: string;
@@ -18,9 +19,6 @@ interface CashEvent {
   required: boolean;
   category: UpcomingEvent["category"];
 }
-
-/** Ending this far above the target buffer counts as "On Track"; shared with the verdict rules. */
-export const COMFORT_MARGIN = 750;
 
 function withinWindow(date: string, start: string, end: string) {
   const value = asDate(date).getTime();
@@ -161,20 +159,20 @@ export function buildProjection(state: FinanceState): FinancialProjection {
   const requiredRemainingExpenses = safeWeekly.requiredRemainingExpenses;
   const discretionaryRemainingExpenses = safeWeekly.discretionaryAlreadyPlanned;
   const lowestProjectedBalance = Math.min(...timeline.map((point) => point.balance), state.cash.checking);
-  const upcomingEvents = events
-    .slice(0, 7)
-    .map((event) => ({
-      id: event.id,
-      date: event.date,
-      name: event.name,
-      amount: Math.abs(event.amount),
-      kind: event.kind,
-      category: event.category
-    }));
+  const upcomingEvents = events.map((event) => ({
+    id: event.id,
+    date: event.date,
+    name: event.name,
+    amount: Math.abs(event.amount),
+    kind: event.kind,
+    category: event.category,
+    required: event.required
+  }));
 
   const buffer = state.cash.targetEndingBuffer;
+  const { comfortMargin } = getVerdictSettings(state);
   const semesterHealth =
-    projectedEndingBalance >= buffer + COMFORT_MARGIN ? "On Track" : projectedEndingBalance >= buffer ? "Tight" : "At Risk";
+    projectedEndingBalance >= buffer + comfortMargin ? "On Track" : projectedEndingBalance >= buffer ? "Tight" : "At Risk";
 
   return {
     timeline,
@@ -187,6 +185,26 @@ export function buildProjection(state: FinanceState): FinancialProjection {
     upcomingEvents,
     semesterHealth
   };
+}
+
+export interface PlanItemTotal {
+  /** Payments that fall between today and the end of the semester. */
+  count: number;
+  /** Sum of those payments, always positive. */
+  total: number;
+}
+
+/** What each income and expense contributes to the rest of the semester, keyed by item id. */
+export function planItemTotals(state: FinanceState): Record<string, PlanItemTotal> {
+  const { currentDate, endDate } = state.semester;
+  const totals: Record<string, PlanItemTotal> = {};
+  const add = (id: string, events: CashEvent[]) => {
+    totals[id] = { count: events.length, total: events.reduce((sum, event) => sum + Math.abs(event.amount), 0) };
+  };
+
+  state.incomes.forEach((income) => add(income.id, incomeEvents(income, currentDate, endDate)));
+  state.expenses.forEach((expense) => add(expense.id, expenseEvents(expense, currentDate, endDate)));
+  return totals;
 }
 
 export function cloneState(state: FinanceState): FinanceState {

@@ -71,6 +71,17 @@ export interface FinancialGoal {
   description: string;
 }
 
+export type VerdictPreset = "cautious" | "balanced" | "flexible" | "custom";
+
+/** How strict affordability verdicts are. Overdrafts and ending below the goal are always "Not recommended". */
+export interface VerdictSettings {
+  preset: VerdictPreset;
+  /** Ending at least this far above the goal counts as comfortable. */
+  comfortMargin: number;
+  /** A cut to safe weekly spending of at least this share (0-1) makes a scenario "tight". */
+  weeklyDropLimit: number;
+}
+
 export interface FinanceState {
   student: StudentProfile;
   semester: Semester;
@@ -79,6 +90,8 @@ export interface FinanceState {
   expenses: Expense[];
   transactions: Transaction[];
   goals: FinancialGoal[];
+  /** Optional so plans saved before this setting existed still load. */
+  verdictSettings?: VerdictSettings;
 }
 
 export type ScenarioType =
@@ -114,6 +127,8 @@ export interface UpcomingEvent {
   amount: number;
   kind: "income" | "expense";
   category: Category;
+  /** Expenses only: required (rent, tuition) vs flexible. */
+  required: boolean;
 }
 
 export interface SafeWeeklyBreakdown {
@@ -147,6 +162,8 @@ export interface Verdict {
   headline: string;
   reasons: string[];
   suggestion?: string;
+  /** Which rule produced this verdict, in plain language. */
+  rule: string;
 }
 
 export interface ScenarioResult {
@@ -174,4 +191,16 @@ export interface ScenarioSummary {
   endingDifference: number;
   weeklyDifference: number;
   verdict: Verdict;
+}
+
+/** The largest one-time purchase on a date that keeps each verdict level. */
+export interface MaxAffordableResult {
+  date: string;
+  /** Largest amount that is still "Comfortable" (0 if nothing is). */
+  comfortableMax: number;
+  /** Largest amount that is not "Not recommended" (0 if nothing is). */
+  tightMax: number;
+  goal: number;
+  comfortMargin: number;
+  weeklyDropLimit: number;
 }

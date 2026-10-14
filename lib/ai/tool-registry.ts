@@ -1,6 +1,6 @@
-import type { FinanceState, Scenario, ScenarioSummary } from "@/types/finance";
+import type { FinanceState, MaxAffordableResult, SafeWeeklyBreakdown, Scenario, ScenarioSummary } from "@/types/finance";
 import { buildProjection } from "@/lib/finance/engine";
-import { compareScenarioToBaseline, getSpendingByCategory, summarizeScenarioResult } from "@/lib/finance/tools";
+import { compareScenarioToBaseline, findMaxAffordable, getSpendingByCategory, summarizeScenarioResult } from "@/lib/finance/tools";
 
 export interface ToolDefinition {
   type: "function";
@@ -11,14 +11,20 @@ export interface ToolDefinition {
   };
 }
 
+/** Deterministic data the UI renders under a copilot answer, so every number can be checked without the model. */
+export type CopilotDetail =
+  | { kind: "scenario"; scenario: ScenarioSummary }
+  | { kind: "snapshot"; breakdown: SafeWeeklyBreakdown; projectedEndingCash: number; semesterHealth: string }
+  | { kind: "spending"; categories: Array<{ category: string; total: number }>; transactionCount: number }
+  | { kind: "max-affordable"; result: MaxAffordableResult };
+
 export interface ToolExecution {
   name: string;
   input: Record<string, unknown>;
   ok: boolean;
   /** JSON-serializable payload sent back to the model. */
   output: unknown;
-  /** Present when the tool ran a what-if scenario; drives the verdict card in the UI. */
-  scenario?: ScenarioSummary;
+  detail?: CopilotDetail;
 }
 
 class ToolInputError extends Error {}
@@ -109,6 +115,20 @@ export function buildToolDefinitions(state: FinanceState): ToolDefinition[] {
     {
       type: "function",
       function: {
+        name: "find_max_affordable",
+        description:
+          "Find the most the student can spend on a one-time purchase on a date: the largest amount that stays 'Comfortable' and the largest that is only 'Fits, but tight'. Use for 'how much can I spend on X', 'what's my budget for X', or 'how much can I spend without it getting tight'.",
+        parameters: {
+          type: "object",
+          properties: { date: dateParam },
+          required: ["date"],
+          additionalProperties: false
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "simulate_investment",
         description:
           "Simulate moving cash out of checking into an investment account on a date. Returns the liquidity impact and a verdict. Never recommends specific securities.",
@@ -167,13 +187,14 @@ export function buildToolDefinitions(state: FinanceState): ToolDefinition[] {
 
 function runScenario(state: FinanceState, scenario: Scenario) {
   const summary = summarizeScenarioResult(state, compareScenarioToBaseline(state, scenario));
-  return { output: summary, scenario: summary };
+  return { output: summary, detail: { kind: "scenario" as const, scenario: summary } };
 }
 
 function dispatch(state: FinanceState, name: string, args: Record<string, unknown>): Omit<ToolExecution, "name" | "input" | "ok"> {
   switch (name) {
     case "get_semester_snapshot": {
       const projection = buildProjection(state);
+      const safeWeekly = { ...projection.safeWeekly, safeWeeklySpending: Math.round(projection.safeWeekly.safeWeeklySpending) };
       return {
         output: {
           today: state.semester.currentDate,
@@ -183,8 +204,14 @@ function dispatch(state: FinanceState, name: string, args: Record<string, unknow
           projectedEndingCash: projection.projectedEndingBalance,
           lowestProjectedBalance: projection.lowestProjectedBalance,
           semesterHealth: projection.semesterHealth,
-          safeWeekly: { ...projection.safeWeekly, safeWeeklySpending: Math.round(projection.safeWeekly.safeWeeklySpending) },
-          upcomingEvents: projection.upcomingEvents
+          safeWeekly,
+          upcomingEvents: projection.upcomingEvents.slice(0, 8)
+        },
+        detail: {
+          kind: "snapshot",
+          breakdown: projection.safeWeekly,
+          projectedEndingCash: projection.projectedEndingBalance,
+          semesterHealth: projection.semesterHealth
         }
       };
     }
@@ -192,7 +219,12 @@ function dispatch(state: FinanceState, name: string, args: Record<string, unknow
       const totals = Object.entries(getSpendingByCategory(state))
         .map(([category, total]) => ({ category, total: Math.round(total * 100) / 100 }))
         .sort((a, b) => b.total - a.total);
-      return { output: { categories: totals, transactionCount: state.transactions.length } };
+      const output = { categories: totals, transactionCount: state.transactions.length };
+      return { output, detail: { kind: "spending", ...output } };
+    }
+    case "find_max_affordable": {
+      const result = findMaxAffordable(state, requireDate(state, args));
+      return { output: result, detail: { kind: "max-affordable", result } };
     }
     case "check_purchase":
       return runScenario(state, {

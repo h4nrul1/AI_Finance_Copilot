@@ -1,8 +1,8 @@
-import type { FinanceState, ScenarioSummary } from "@/types/finance";
+import type { FinanceState } from "@/types/finance";
 import { addDays, asDate, toISODate } from "@/lib/finance/dates";
 import { formatCurrency } from "@/lib/utils";
 import { buildStudentContext, FINANCIAL_COPILOT_SYSTEM_PROMPT } from "./prompts";
-import { buildToolDefinitions, executeTool, type ToolExecution } from "./tool-registry";
+import { buildToolDefinitions, executeTool, type CopilotDetail, type ToolExecution } from "./tool-registry";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -19,8 +19,8 @@ export interface CopilotAnswer {
   message: string;
   mode: "mock" | "openai";
   toolCalls: CopilotToolCall[];
-  /** The last scenario a tool ran, so the UI can render the deterministic verdict and calculation. */
-  scenario?: ScenarioSummary;
+  /** Deterministic results from every successful tool call, rendered as cards under the message. */
+  details: CopilotDetail[];
 }
 
 const MAX_TOOL_ROUNDS = 4;
@@ -31,12 +31,11 @@ function firstName(state: FinanceState) {
 }
 
 function toAnswer(message: string, mode: CopilotAnswer["mode"], executions: ToolExecution[]): CopilotAnswer {
-  const scenario = [...executions].reverse().find((execution) => execution.scenario)?.scenario;
   return {
     message,
     mode,
     toolCalls: executions.map(({ name, input, ok }) => ({ name, input, ok })),
-    scenario
+    details: executions.flatMap((execution) => (execution.ok && execution.detail ? [execution.detail] : []))
   };
 }
 
@@ -109,6 +108,10 @@ export function detectIntent(message: string, state: FinanceState): Intent {
     return { kind: "tool", name: "get_semester_snapshot", args: {} };
   }
 
+  if (amount === undefined && /how much (can|could|should) i (spend|afford|budget)|what('s| is) my budget for|most i can (spend|afford)/.test(lower)) {
+    return { kind: "tool", name: "find_max_affordable", args: { date } };
+  }
+
   if (/\b(afford|buy|purchase|trip|spend|pay for)\b/.test(lower)) {
     if (amount === undefined) return { kind: "clarify", message: "Happy to check. Roughly how much would it cost, and when would you pay for it?" };
     const name = /\btrip\b/.test(lower) ? "Trip" : "Purchase";
@@ -159,27 +162,30 @@ function describeExecution(execution: ToolExecution, state: FinanceState) {
     return `I couldn't run that calculation: ${(execution.output as { error: string }).error}`;
   }
 
-  // Reasons, suggestion, and the before/after numbers are shown by the verdict card under the message.
-  if (execution.scenario) {
-    const { verdict } = execution.scenario;
-    return `${verdict.label}. ${verdict.headline}`;
+  // Details (breakdowns, before/after numbers) are shown by the card under the message, so keep the text short.
+  const detail = execution.detail;
+  switch (detail?.kind) {
+    case "scenario":
+      return `${detail.scenario.verdict.label}. ${detail.scenario.verdict.headline}`;
+    case "spending": {
+      const [top] = detail.categories;
+      return top
+        ? `Your largest spending category so far is ${top.category} at ${formatCurrency(top.total, 2)}. Categories with many small purchases, like dining, are usually the easiest place to cut back.`
+        : "I don't see any logged spending yet.";
+    }
+    case "max-affordable":
+      return detail.result.comfortableMax > 0
+        ? `You can spend up to ${formatCurrency(detail.result.comfortableMax)} and stay comfortable. Up to ${formatCurrency(detail.result.tightMax)} still fits, but it gets tight.`
+        : detail.result.tightMax > 0
+          ? `Nothing stays fully comfortable right now, but up to ${formatCurrency(detail.result.tightMax)} still fits without going below your goal.`
+          : "Any extra purchase would put you below your semester goal right now.";
+    case "snapshot":
+      return `${firstName(state)} can safely spend about ${formatCurrency(detail.breakdown.safeWeeklySpending)}/week on flexible items for the next ${detail.breakdown.weeksRemaining.toFixed(
+        1
+      )} weeks while protecting a ${formatCurrency(detail.breakdown.targetEndingBuffer)} goal. Projected semester-end cash is ${formatCurrency(detail.projectedEndingCash)} (${detail.semesterHealth}).`;
+    default:
+      return "Done.";
   }
-
-  if (execution.name === "get_spending_by_category") {
-    const [top] = (execution.output as { categories: Array<{ category: string; total: number }> }).categories;
-    return top
-      ? `Your largest spending category so far is ${top.category} at ${formatCurrency(top.total, 2)}. Categories with many small purchases, like dining, are usually the easiest place to cut back.`
-      : "I don't see any transactions yet.";
-  }
-
-  const snapshot = execution.output as {
-    projectedEndingCash: number;
-    semesterHealth: string;
-    safeWeekly: { safeWeeklySpending: number; weeksRemaining: number; targetEndingBuffer: number };
-  };
-  return `${firstName(state)} can safely spend about ${formatCurrency(snapshot.safeWeekly.safeWeeklySpending)}/week on flexible items for the next ${snapshot.safeWeekly.weeksRemaining.toFixed(
-    1
-  )} weeks while protecting a ${formatCurrency(snapshot.safeWeekly.targetEndingBuffer)} buffer. Projected semester-end cash is ${formatCurrency(snapshot.projectedEndingCash)} (${snapshot.semesterHealth}).`;
 }
 
 export function mockCopilot(message: string, state: FinanceState): CopilotAnswer {

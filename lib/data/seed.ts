@@ -1,4 +1,4 @@
-import type { FinanceState, Scenario } from "@/types/finance";
+import type { FinanceState } from "@/types/finance";
 
 export const demoState: FinanceState = {
   student: {
@@ -175,47 +175,3 @@ export const demoState: FinanceState = {
     }
   ]
 };
-
-export const presetScenarios: Scenario[] = [
-  {
-    id: "trip",
-    name: "Chicago Trip",
-    description: "What if I spend $500 on a trip in November?",
-    type: "purchase",
-    amount: 500,
-    date: "2026-11-12"
-  },
-  {
-    id: "stop-working",
-    name: "Stop Working",
-    description: "What if I stop working after October 1?",
-    type: "income-loss",
-    incomeName: "Part-time campus job",
-    stopDate: "2026-10-01"
-  },
-  {
-    id: "rent-increase",
-    name: "Rent Increase",
-    description: "What if rent increases by $100/month?",
-    type: "expense-change",
-    expenseName: "Rent",
-    amount: 100,
-    date: "2026-10-01"
-  },
-  {
-    id: "invest",
-    name: "Invest $300",
-    description: "What if I move $300 into a beginner investment account?",
-    type: "investment",
-    amount: 300,
-    date: "2026-10-15"
-  },
-  {
-    id: "car-repair",
-    name: "Car Repair",
-    description: "What if I have an unexpected $700 car repair?",
-    type: "unexpected-expense",
-    amount: 700,
-    date: "2026-10-20"
-  }
-];

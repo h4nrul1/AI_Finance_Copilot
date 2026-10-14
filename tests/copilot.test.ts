@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { demoState } from "@/lib/data/seed";
 import { detectIntent, extractAmount, extractDate, mockCopilot, runOpenAICopilot } from "@/lib/ai/copilot";
-import { buildToolDefinitions, executeTool } from "@/lib/ai/tool-registry";
+import { buildToolDefinitions, executeTool, type CopilotDetail } from "@/lib/ai/tool-registry";
+
+function scenarioOf(detail: CopilotDetail | undefined) {
+  if (detail?.kind !== "scenario") throw new Error(`expected a scenario detail, got ${detail?.kind}`);
+  return detail.scenario;
+}
 
 describe("tool registry", () => {
   it("exposes the student's real income and expense names as enums", () => {
@@ -16,8 +21,14 @@ describe("tool registry", () => {
     const execution = executeTool(demoState, "check_purchase", { name: "Trip", amount: 500, date: "2026-11-12" });
 
     expect(execution.ok).toBe(true);
-    expect(execution.scenario?.withChange.endingCash).toBe(3115);
-    expect(execution.scenario?.verdict.level).toBe("comfortable");
+    expect(scenarioOf(execution.detail).withChange.endingCash).toBe(3115);
+    expect(scenarioOf(execution.detail).verdict.level).toBe("comfortable");
+  });
+
+  it("returns a card for every successful tool, not just scenarios", () => {
+    expect(executeTool(demoState, "get_semester_snapshot", {}).detail?.kind).toBe("snapshot");
+    expect(executeTool(demoState, "get_spending_by_category", {}).detail?.kind).toBe("spending");
+    expect(executeTool(demoState, "find_max_affordable", { date: "2026-11-28" }).detail?.kind).toBe("max-affordable");
   });
 
   it("rejects dates outside the semester so the model can correct itself", () => {
@@ -41,7 +52,9 @@ describe("offline copilot routing", () => {
     ["Where am I spending the most money?", "get_spending_by_category"],
     ["What happens if I stop working in October?", "simulate_income_loss"],
     ["What if rent goes up $100?", "simulate_recurring_expense_change"],
-    ["What happens if I invest $300?", "simulate_investment"]
+    ["What happens if I invest $300?", "simulate_investment"],
+    ["How much can I spend on a laptop in November?", "find_max_affordable"],
+    ["How much can I spend without putting my budget tight", "find_max_affordable"]
   ])("routes %j to %s", (question, tool) => {
     const intent = detectIntent(question, demoState);
 
@@ -66,7 +79,7 @@ describe("offline copilot routing", () => {
     const answer = mockCopilot("Can I afford a $3,000 trip in December?", demoState);
 
     expect(answer.message.startsWith("Not recommended.")).toBe(true);
-    expect(answer.scenario?.verdict.level).toBe("not-recommended");
+    expect(scenarioOf(answer.details[0]).verdict.level).toBe("not-recommended");
   });
 
   it("parses amounts with commas and ignores day numbers", () => {
@@ -113,7 +126,7 @@ describe("OpenAI tool-calling loop", () => {
 
     expect(answer.mode).toBe("openai");
     expect(answer.toolCalls).toEqual([{ name: "check_purchase", input: { name: "Trip", amount: 500, date: "2026-11-12" }, ok: true }]);
-    expect(answer.scenario?.verdict.level).toBe("comfortable");
+    expect(scenarioOf(answer.details[0]).verdict.level).toBe("comfortable");
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const secondRequest = JSON.parse((fetchMock.mock.calls[1] as unknown as [string, RequestInit])[1].body as string);
