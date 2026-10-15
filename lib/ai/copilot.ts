@@ -142,7 +142,7 @@ function educationAnswer(message: string, state: FinanceState) {
     return `A grant or scholarship is generally money you do not repay. A loan is borrowed money that must be repaid later, usually with interest. Loans can help cover school costs, but they are different from income because they create a future obligation.`;
   }
   if (lower.includes("aid")) {
-    return `A financial aid offer usually mixes free aid (grants and scholarships), borrowed aid (loans), and work-study, which you only receive by working. Only the free aid actually lowers your cost; the Financial Aid page breaks a sample offer down this way.`;
+    return `A financial aid offer usually mixes free aid (grants and scholarships), borrowed aid (loans), and work-study, which you only receive by working. Only the free aid actually lowers your cost; loans have to be repaid later, so treat them as borrowed money rather than income.`;
   }
   if (lower.includes("emergency")) {
     return `An emergency fund is money kept available for unexpected expenses, like a medical bill or car repair. ${name}'s plan protects a ${formatCurrency(state.cash.targetEndingBuffer)} semester-end buffer, which works like a small emergency cushion.`;

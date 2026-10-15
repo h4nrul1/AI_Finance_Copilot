@@ -12,7 +12,7 @@ The app helps users answer:
 
 > Given everything happening between now and the end of the semester, what can I actually afford?
 
-It ships with realistic seeded data, cash-flow projections, safe weekly spending, spending tracking, scenario testing, a financial-aid explanation demo, beginner lessons, and a copilot chat.
+It ships with realistic seeded data, cash-flow projections, safe weekly spending, spending tracking, scenario testing, and a copilot chat that also explains beginner finance concepts.
 
 ## Demo Features
 
@@ -23,8 +23,6 @@ It ships with realistic seeded data, cash-flow projections, safe weekly spending
 - "Can I Afford This?" purchase checker.
 - Copilot chat with visible tool usage and a calculation card for every answer, including spending limits ("how much can I spend on X").
 - Spending page: log purchases, suggested categories you can override, editable categories, and clear totals.
-- Financial Aid page with sample offer parsing.
-- Learn page for beginner finance topics.
 
 ## Architecture
 
@@ -163,7 +161,6 @@ If you change calculations (`lib/finance/*`) or verdict rules, add or update a t
 8. Ask: "What is an ETF?"
 9. On Spending, log a purchase and change a category.
 10. On Semester Plan, switch verdict strictness to Cautious and change the goal; watch the weekly budget and verdicts update.
-11. Load the sample Financial Aid offer and explain free aid vs loans vs work-study.
 
 ## Disclaimer
 

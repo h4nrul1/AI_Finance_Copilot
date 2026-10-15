@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
   Bot,
-  FileText,
   GraduationCap,
   LayoutDashboard,
   LineChart,
@@ -22,8 +20,6 @@ const nav = [
   { href: "/semester", label: "Semester Plan", icon: Settings2 },
   { href: "/spending", label: "Spending", icon: ReceiptText },
   { href: "/scenarios", label: "Scenario Lab", icon: LineChart },
-  { href: "/aid", label: "Financial Aid", icon: FileText },
-  { href: "/learn", label: "Learn", icon: BookOpen },
   { href: "/copilot", label: "Copilot", icon: Bot }
 ];
 
