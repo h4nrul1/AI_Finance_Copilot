@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
@@ -11,6 +14,43 @@ export function Input({ className, ...props }: InputProps) {
         className
       )}
       {...props}
+    />
+  );
+}
+
+type NumberInputProps = Omit<InputProps, "type" | "value" | "onChange"> & {
+  value: number;
+  onValueChange: (value: number) => void;
+};
+
+/**
+ * Number field that can be cleared while typing. It keeps the typed text and only reports valid numbers, so
+ * clearing the box doesn't force a 0 into it (which left values like "02000"). Leaving it empty restores the value.
+ */
+export function NumberInput({ value, onValueChange, onBlur, ...props }: NumberInputProps) {
+  const [text, setText] = useState(String(value));
+
+  // Follow outside changes (reset, saves elsewhere) without disturbing what's being typed for the same number.
+  useEffect(() => {
+    setText((current) => (current.trim() !== "" && Number(current) === value ? current : String(value)));
+  }, [value]);
+
+  return (
+    <Input
+      {...props}
+      type="number"
+      inputMode="decimal"
+      value={text}
+      onChange={(event) => {
+        const next = event.target.value;
+        setText(next);
+        const parsed = Number(next);
+        if (next.trim() !== "" && Number.isFinite(parsed)) onValueChange(parsed);
+      }}
+      onBlur={(event) => {
+        setText(String(value));
+        onBlur?.(event);
+      }}
     />
   );
 }

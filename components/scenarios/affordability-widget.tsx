@@ -4,7 +4,7 @@ import { useState } from "react";
 import { WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, NumberInput } from "@/components/ui/input";
 import { useFinance } from "@/components/providers/finance-provider";
 import { compareScenarioToBaseline, summarizeScenarioResult } from "@/lib/finance/tools";
 import type { ScenarioResult } from "@/types/finance";
@@ -40,7 +40,7 @@ export function AffordabilityWidget({ onResult }: { onResult?: (result: Scenario
         </div>
         <div>
           <Label>Amount</Label>
-          <Input type="number" value={amount} onChange={(event) => setAmount(Number(event.target.value))} />
+          <NumberInput value={amount} onValueChange={setAmount} />
         </div>
         <div>
           <Label>Date</Label>

@@ -2,19 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Save, Target, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Input, Label, NumberInput, Select } from "@/components/ui/input";
 import { useFinance } from "@/components/providers/finance-provider";
 import { planItemTotals, type PlanItemTotal } from "@/lib/finance/engine";
-import {
-  COMFORT_MARGIN_BOUNDS,
-  getVerdictSettings,
-  presetSettings,
-  VERDICT_PRESETS,
-  WEEKLY_DROP_BOUNDS
-} from "@/lib/finance/verdict-settings";
-import type { Category, Expense, Frequency, IncomeEvent, VerdictPreset } from "@/types/finance";
+import { findMaxAffordable } from "@/lib/finance/tools";
+import { getVerdictSettings, thresholdError } from "@/lib/finance/verdict-settings";
+import type { Category, Expense, Frequency, IncomeEvent } from "@/types/finance";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const frequencies: Frequency[] = ["monthly", "weekly", "biweekly"];
@@ -55,7 +51,8 @@ export default function SemesterPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">Semester Plan</p>
         <h1 className="mt-2 text-3xl font-semibold text-ink">Edit the assumptions behind the plan.</h1>
         <p className="mt-2 text-sm text-muted">
-          Totals cover the rest of the semester: {formatDate(state.semester.currentDate)} to {formatDate(state.semester.endDate)}.
+          Today in this plan is <strong className="text-ink">{formatDate(state.semester.currentDate)}</strong>. Totals count only what&apos;s
+          still ahead, through {formatDate(state.semester.endDate)}; anything earlier is already reflected in your checking balance.
         </p>
       </header>
 
@@ -112,7 +109,7 @@ export default function SemesterPage() {
 
       <section className="grid gap-5 lg:grid-cols-2">
         <GoalCard />
-        <VerdictSettingsCard />
+        <VerdictThresholdsCard />
       </section>
     </div>
   );
@@ -190,56 +187,108 @@ function GoalCard() {
   );
 }
 
-function VerdictSettingsCard() {
-  const { state, updateVerdictSettings } = useFinance();
-  const settings = getVerdictSettings(state);
-  const [margin, setMargin] = useState(settings.comfortMargin);
-  const [dropPercent, setDropPercent] = useState(Math.round(settings.weeklyDropLimit * 100));
+function VerdictThresholdsCard() {
+  const { state, projection, updateVerdictSettings } = useFinance();
+  const saved = getVerdictSettings(state);
+  const [comfortable, setComfortable] = useState(Math.round(saved.comfortableDropLimit * 100));
+  const [tight, setTight] = useState(Math.round(saved.tightDropLimit * 100));
 
+  // Follow the saved plan after a reset or a save.
   useEffect(() => {
-    setMargin(settings.comfortMargin);
-    setDropPercent(Math.round(settings.weeklyDropLimit * 100));
-  }, [settings.comfortMargin, settings.weeklyDropLimit]);
+    setComfortable(Math.round(saved.comfortableDropLimit * 100));
+    setTight(Math.round(saved.tightDropLimit * 100));
+  }, [saved.comfortableDropLimit, saved.tightDropLimit]);
 
-  const presets = Object.entries(VERDICT_PRESETS) as Array<[Exclude<VerdictPreset, "custom">, (typeof VERDICT_PRESETS)["balanced"]]>;
+  const error = thresholdError(comfortable, tight);
+  const draft = { comfortableDropLimit: comfortable / 100, tightDropLimit: tight / 100 };
+  const shown = error ? saved : draft;
+  const unsaved = !error && (draft.comfortableDropLimit !== saved.comfortableDropLimit || draft.tightDropLimit !== saved.tightDropLimit);
+  const weekly = projection.safeWeekly.safeWeeklySpending;
+  const weeklyAfter = (cut: number) => formatCurrency(Math.max(0, weekly * (1 - cut)));
+  // A few dozen projections; cheap enough to recompute as the student types.
+  const limits = findMaxAffordable({ ...state, verdictSettings: shown }, state.semester.currentDate);
+  const c = Math.round(shown.comfortableDropLimit * 100);
+  const t = Math.round(shown.tightDropLimit * 100);
 
   return (
     <Card>
-      <CardHeader title="Verdict Strictness" eyebrow="When a purchase counts as tight" />
-      <div className="grid gap-2 sm:grid-cols-3">
-        {presets.map(([key, preset]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => updateVerdictSettings(presetSettings(key))}
-            className={cn(
-              "rounded-md border px-3 py-2 text-left text-sm transition",
-              settings.preset === key ? "border-moss bg-moss text-white" : "border-line bg-paper text-ink hover:border-moss"
-            )}
-          >
-            <span className="font-semibold">{preset.label}</span>
-            <span className={cn("mt-1 block text-xs leading-5", settings.preset === key ? "text-white/80" : "text-muted")}>{preset.description}</span>
-          </button>
-        ))}
+      <CardHeader title="Verdict Thresholds" eyebrow="You decide what counts as tight" />
+      <p className="text-sm leading-6 text-muted">
+        Verdicts depend on how much a decision cuts your safe weekly budget (now{" "}
+        <strong className="text-ink">{formatCurrency(weekly)}/week</strong>). A 100% cut uses all your spare money and leaves you exactly
+        at your goal.
+      </p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <NumberField id="comfortable-limit" label="Comfortable up to (%)" value={comfortable} onChange={setComfortable} />
+        <NumberField id="tight-limit" label="Tight up to (%)" value={tight} onChange={setTight} />
+      </div>
+      {error ? <p className="mt-2 text-sm font-medium text-coral">{error} Showing your saved thresholds below.</p> : null}
+
+      <div className="mt-4 flex h-3 overflow-hidden rounded-full" aria-hidden>
+        <div className="bg-sage" style={{ width: `${c}%` }} />
+        <div className="bg-gold" style={{ width: `${t - c}%` }} />
+        <div className="bg-coral" style={{ width: `${100 - t}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-[11px] text-muted">
+        <span>0% cut</span>
+        <span>100% cut</span>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <NumberField id="comfort-margin" label="Comfortable margin above goal ($)" value={margin} onChange={setMargin} />
-        <NumberField id="weekly-drop" label="Tight if weekly budget drops (%)" value={dropPercent} onChange={setDropPercent} />
-        <Button
-          variant="secondary"
-          onClick={() => updateVerdictSettings({ preset: "custom", comfortMargin: margin, weeklyDropLimit: dropPercent / 100 })}
-        >
-          Use custom
+      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.10em] text-muted">
+        What each verdict means for you today{unsaved ? " · preview, not saved" : ""}
+      </p>
+      <div className="mt-2 space-y-2 text-sm">
+        <ThresholdRow
+          tone="good"
+          label="Comfortable"
+          rule={`Weekly budget drops ${c}% or less, so you keep at least ${weeklyAfter(shown.comfortableDropLimit)}/week.`}
+          amount={limits.comfortableMax > 0 ? `One-time purchases up to ${formatCurrency(limits.comfortableMax)}` : "Nothing fits comfortably right now"}
+        />
+        <ThresholdRow
+          tone="warn"
+          label="Fits, but tight"
+          rule={`Drops more than ${c}%, up to ${t}%, leaving ${weeklyAfter(shown.tightDropLimit)}–${weeklyAfter(shown.comfortableDropLimit)}/week.`}
+          amount={
+            limits.tightMax > limits.comfortableMax
+              ? `${formatCurrency(limits.comfortableMax + 1)} – ${formatCurrency(limits.tightMax)}`
+              : "No purchase lands here right now"
+          }
+        />
+        <ThresholdRow
+          tone="bad"
+          label="Not recommended"
+          rule={
+            t < 100
+              ? `Drops more than ${t}%, ends below your ${formatCurrency(state.cash.targetEndingBuffer)} goal, or overdraws checking.`
+              : `Ends below your ${formatCurrency(state.cash.targetEndingBuffer)} goal or overdraws checking.`
+          }
+          amount={limits.tightMax > 0 ? `Over ${formatCurrency(limits.tightMax)}` : "Any purchase"}
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs leading-5 text-muted">
+          Always <strong className="text-ink">Not recommended</strong>, whatever you set: going below $0 or ending below your goal.
+        </p>
+        <Button disabled={!unsaved} onClick={() => updateVerdictSettings(draft)}>
+          <Save size={16} />
+          {error ? "Fix to save" : unsaved ? "Save thresholds" : "Saved"}
         </Button>
       </div>
-      <p className="mt-3 text-xs leading-5 text-muted">
-        Custom values are kept between {formatCurrency(COMFORT_MARGIN_BOUNDS.min)}–{formatCurrency(COMFORT_MARGIN_BOUNDS.max)} and{" "}
-        {WEEKLY_DROP_BOUNDS.min * 100}–{WEEKLY_DROP_BOUNDS.max * 100}%. Two rules never change: going below $0 or ending below your goal is
-        always <strong className="text-ink">Not recommended</strong>.
-        {settings.preset === "custom" ? " Currently using custom values." : ""}
-      </p>
     </Card>
+  );
+}
+
+function ThresholdRow({ tone, label, rule, amount }: { tone: "good" | "warn" | "bad"; label: string; rule: string; amount: string }) {
+  return (
+    <div className="rounded-md bg-paper px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge tone={tone}>{label}</Badge>
+        <span className="font-semibold text-ink">{amount}</span>
+      </div>
+      <p className="mt-1 text-xs leading-5 text-muted">{rule}</p>
+    </div>
   );
 }
 
@@ -256,22 +305,56 @@ function NumberField({ id, label, value, onChange }: { id?: string; label: strin
   return (
     <div>
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type="number" value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <NumberInput id={id} value={value} onValueChange={onChange} />
     </div>
   );
 }
 
-function ItemTotal({ item, total, sign }: { item: { amount: number; recurring: boolean }; total?: PlanItemTotal; sign: "+" | "−" }) {
-  if (!total || total.count === 0) {
-    return <span className="text-xs text-muted">Not in the rest of the semester</span>;
+function ItemTotal({
+  item,
+  total,
+  sign,
+  today,
+  semesterEnd
+}: {
+  item: { amount: number; recurring: boolean; startDate: string };
+  total?: PlanItemTotal;
+  sign: "+" | "−";
+  today: string;
+  semesterEnd: string;
+}) {
+  const paidWord = sign === "+" ? "received" : "paid";
+  if (!total) return null;
+
+  if (total.timing === "past") {
+    return (
+      <span className="text-xs text-muted">
+        <strong className="text-ink">Not counted:</strong>{" "}
+        {item.recurring
+          ? `all payments were before today (${formatDate(today)})`
+          : `${paidWord} ${formatDate(item.startDate)}, before today (${formatDate(today)})`}
+        , so it&apos;s already reflected in your checking balance.
+      </span>
+    );
   }
+  if (total.timing === "after-semester") {
+    return (
+      <span className="text-xs text-muted">
+        <strong className="text-ink">Not counted:</strong> dated after the semester ends ({formatDate(semesterEnd)}).
+      </span>
+    );
+  }
+
   return (
     <span className="text-xs text-muted">
-      {item.recurring ? `${formatCurrency(item.amount)} × ${total.count} = ` : ""}
+      {item.recurring ? `${formatCurrency(item.amount)} × ${total.count} still to come = ` : ""}
       <strong className={sign === "+" ? "text-moss" : "text-coral"}>
         {sign}
         {formatCurrency(total.total)}
       </strong>
+      {total.pastCount > 0
+        ? ` · ${total.pastCount} earlier ${total.pastCount === 1 ? "payment" : "payments"} already ${paidWord}, not counted`
+        : ""}
     </span>
   );
 }
@@ -319,6 +402,7 @@ function EditableIncomeTable({
   onDelete: (id: string) => void;
   onAdd: () => void;
 }) {
+  const { currentDate: today, endDate: semesterEnd } = useFinance().state.semester;
   return (
     <Card>
       <CardHeader
@@ -326,7 +410,7 @@ function EditableIncomeTable({
         eyebrow="Guaranteed sources"
         action={
           <div className="flex items-center gap-3">
-            <TotalBadge label="Rest of semester" value={`+${formatCurrency(total)}`} tone="good" />
+            <TotalBadge label="Still to come" value={`+${formatCurrency(total)}`} tone="good" />
             <Button variant="secondary" onClick={onAdd}>
               Add
             </Button>
@@ -351,7 +435,7 @@ function EditableIncomeTable({
             </div>
             <div className="mt-2">
               {income.guaranteed ? (
-                <ItemTotal item={income} total={totals[income.id]} sign="+" />
+                <ItemTotal item={income} total={totals[income.id]} sign="+" today={today} semesterEnd={semesterEnd} />
               ) : (
                 <span className="text-xs text-muted">Not guaranteed, so not counted</span>
               )}
@@ -380,6 +464,7 @@ function EditableExpenseTable({
   onDelete: (id: string) => void;
   onAdd: () => void;
 }) {
+  const { currentDate: today, endDate: semesterEnd } = useFinance().state.semester;
   return (
     <Card>
       <CardHeader
@@ -387,8 +472,8 @@ function EditableExpenseTable({
         eyebrow="Required and flexible"
         action={
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <TotalBadge label="Required" value={`−${formatCurrency(requiredTotal)}`} tone="bad" />
-            <TotalBadge label="Flexible" value={`−${formatCurrency(flexibleTotal)}`} tone="bad" />
+            <TotalBadge label="Required, still to pay" value={`−${formatCurrency(requiredTotal)}`} tone="bad" />
+            <TotalBadge label="Flexible, still to pay" value={`−${formatCurrency(flexibleTotal)}`} tone="bad" />
             <Button variant="secondary" onClick={onAdd}>
               Add
             </Button>
@@ -425,7 +510,7 @@ function EditableExpenseTable({
             </div>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{expense.required ? "Required" : "Flexible"}</span>
-              <ItemTotal item={expense} total={totals[expense.id]} sign="−" />
+              <ItemTotal item={expense} total={totals[expense.id]} sign="−" today={today} semesterEnd={semesterEnd} />
             </div>
           </div>
         ))}

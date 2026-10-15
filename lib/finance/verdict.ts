@@ -8,32 +8,32 @@ const LABELS: Record<VerdictLevel, Verdict["label"]> = {
   "not-recommended": "Not recommended"
 };
 
-function perWeek(total: number, weeks: number) {
-  return formatCurrency(Math.ceil(total / Math.max(1, weeks)));
-}
-
 function percent(ratio: number) {
   return `${Math.round(ratio * 100)}%`;
 }
 
 /**
  * Deterministic, rule-based judgement of a scenario. The copilot must relay this verdict, never invent its own.
- * Fixed rules: an overdraft or ending below the goal is always "not recommended". The student's verdict settings
- * decide the line between "tight" and "comfortable" (comfort margin above the goal, and weekly spending cut limit).
+ *
+ * Fixed safety rules: going below $0 at any point, or ending below the goal, is always "not recommended".
+ * Otherwise the verdict depends on how much the change cuts the safe weekly budget, compared with the student's
+ * two thresholds: up to the comfortable limit is "comfortable", up to the tight limit is "tight", above it is
+ * "not recommended". The weekly budget is spare money divided by weeks left, so the cut is also the share of
+ * spare money the decision uses up.
  */
 export function assessScenario(state: FinanceState, baseline: FinancialProjection, scenario: FinancialProjection): Verdict {
-  const { comfortMargin, weeklyDropLimit } = getVerdictSettings(state);
-  const buffer = state.cash.targetEndingBuffer;
+  const { comfortableDropLimit, tightDropLimit } = getVerdictSettings(state);
+  const goal = state.cash.targetEndingBuffer;
   const ending = scenario.projectedEndingBalance;
   const endingDifference = ending - baseline.projectedEndingBalance;
-  const weeks = scenario.safeWeekly.weeksRemaining;
+  const weeks = baseline.safeWeekly.weeksRemaining;
   const baseWeekly = baseline.safeWeekly.safeWeeklySpending;
   const newWeekly = scenario.safeWeekly.safeWeeklySpending;
-  const weeklyDropRatio = baseWeekly > 0 ? (baseWeekly - newWeekly) / baseWeekly : 0;
+  const drop = baseWeekly > 0 ? (baseWeekly - newWeekly) / baseWeekly : 1;
   const firstNegative = scenario.timeline.find((point) => point.balance < 0);
-  const comfortRule = `Comfortable means ending at least ${formatCurrency(comfortMargin)} above your ${formatCurrency(
-    buffer
-  )} goal and cutting weekly spending by less than ${percent(weeklyDropLimit)}.`;
+  const weeklyChange = `Safe weekly spending goes from ${formatCurrency(baseWeekly)}/week to ${formatCurrency(newWeekly)}/week (${percent(drop)} less).`;
+  // Dollars that would bring the cut back down to a threshold.
+  const overBy = (limit: number) => formatCurrency(Math.ceil((drop - limit) * baseWeekly * weeks));
   const verdict = (level: VerdictLevel, headline: string, reasons: string[], rule: string, suggestion?: string): Verdict => ({
     level,
     label: LABELS[level],
@@ -44,19 +44,20 @@ export function assessScenario(state: FinanceState, baseline: FinancialProjectio
   });
 
   if (endingDifference >= 0) {
-    const level: VerdictLevel = ending >= buffer + comfortMargin ? "comfortable" : ending >= buffer ? "tight" : "not-recommended";
     return verdict(
-      level,
+      ending >= goal ? "comfortable" : "not-recommended",
       endingDifference === 0
         ? "This doesn't change your projected semester-end cash."
         : `This improves your projected semester-end cash by ${formatCurrency(endingDifference)}.`,
-      [`You'd finish the semester with ${formatCurrency(ending)} against a ${formatCurrency(buffer)} goal.`],
-      "Changes that add cash are rated by where you'd end the semester compared with your goal."
+      [`You'd finish the semester with ${formatCurrency(ending)} against a ${formatCurrency(goal)} goal.`],
+      ending >= goal
+        ? "Changes that add money are Comfortable as long as you still finish at or above your goal."
+        : `Always not recommended: you'd still end below your ${formatCurrency(goal)} goal.`
     );
   }
 
   if (firstNegative) {
-    const needed = Math.max(Math.abs(scenario.lowestProjectedBalance), buffer - ending);
+    const needed = Math.max(Math.abs(scenario.lowestProjectedBalance), goal - ending);
     return verdict(
       "not-recommended",
       `Your checking balance would go negative around ${formatDate(firstNegative.date)}.`,
@@ -65,55 +66,50 @@ export function assessScenario(state: FinanceState, baseline: FinancialProjectio
         "Overdrafts usually mean fees or missed required payments like rent."
       ],
       "Always not recommended: your balance would drop below $0.",
-      `Reduce this by at least ${formatCurrency(needed)} to stay above zero and protect your ${formatCurrency(buffer)} goal, or move it later in the semester.`
+      `Reduce this by at least ${formatCurrency(needed)} to stay above zero and protect your ${formatCurrency(goal)} goal, or move it later in the semester.`
     );
   }
 
-  if (ending < buffer) {
-    const shortfall = buffer - ending;
+  if (ending < goal) {
+    const shortfall = goal - ending;
     return verdict(
       "not-recommended",
-      `You'd finish with ${formatCurrency(ending)}, which is ${formatCurrency(shortfall)} below your ${formatCurrency(buffer)} goal.`,
+      `You'd finish with ${formatCurrency(ending)}, which is ${formatCurrency(shortfall)} below your ${formatCurrency(goal)} goal.`,
       [
         `Projected semester-end cash drops from ${formatCurrency(baseline.projectedEndingBalance)} to ${formatCurrency(ending)}.`,
         `Safe weekly spending would fall to ${formatCurrency(newWeekly)}/week.`
       ],
-      `Always not recommended: you'd end the semester below your ${formatCurrency(buffer)} goal.`,
-      `To make it fit, reduce the cost by ${formatCurrency(shortfall)}, or cut about ${perWeek(shortfall, weeks)}/week from flexible spending for the rest of the semester.`
+      `Always not recommended: you'd end the semester below your ${formatCurrency(goal)} goal.`,
+      `To make it fit, reduce the cost by ${formatCurrency(shortfall)}, or cut about ${formatCurrency(
+        Math.ceil(shortfall / Math.max(1, weeks))
+      )}/week from flexible spending for the rest of the semester.`
     );
   }
 
-  const cushionGap = buffer + comfortMargin - ending;
-  const bigWeeklyCut = weeklyDropRatio >= weeklyDropLimit;
-  if (cushionGap > 0 || bigWeeklyCut) {
-    const reasons = [
-      `Safe weekly spending drops from ${formatCurrency(baseWeekly)}/week to ${formatCurrency(newWeekly)}/week (${percent(weeklyDropRatio)} less).`
-    ];
-    if (cushionGap > 0) {
-      reasons.push(`You'd end only ${formatCurrency(ending - buffer)} above your ${formatCurrency(buffer)} goal.`);
-    }
-    const triggers = [
-      cushionGap > 0 ? `you'd end less than ${formatCurrency(comfortMargin)} above your goal` : null,
-      bigWeeklyCut ? `weekly spending drops ${percent(weeklyDropRatio)} (your limit is ${percent(weeklyDropLimit)})` : null
-    ].filter(Boolean);
+  if (drop > tightDropLimit) {
+    return verdict(
+      "not-recommended",
+      `This would cut your weekly budget by ${percent(drop)}.`,
+      [weeklyChange, `You'd still finish with ${formatCurrency(ending)}, but with very little room for anything else.`],
+      `Not recommended because your weekly budget drops ${percent(drop)}, more than your ${percent(tightDropLimit)} limit for Fits, but tight.`,
+      `Reduce this by about ${overBy(tightDropLimit)} to bring it within your Fits, but tight limit.`
+    );
+  }
+
+  if (drop > comfortableDropLimit) {
     return verdict(
       "tight",
       "It fits, but you'd need to spend less for the rest of the semester.",
-      reasons,
-      `Fits, but tight because ${triggers.join(" and ")}.`,
-      cushionGap > 0
-        ? `Trimming about ${perWeek(cushionGap, weeks)}/week from dining or shopping would restore a comfortable cushion.`
-        : `Plan on about ${formatCurrency(newWeekly)}/week for flexible spending instead of ${formatCurrency(baseWeekly)}/week.`
+      [weeklyChange, `You'd finish with ${formatCurrency(ending)}, ${formatCurrency(ending - goal)} above your goal.`],
+      `Fits, but tight because your weekly budget drops ${percent(drop)}, more than your ${percent(comfortableDropLimit)} limit for Comfortable.`,
+      `Plan on about ${formatCurrency(newWeekly)}/week from now on, or reduce this by about ${overBy(comfortableDropLimit)} to keep it Comfortable.`
     );
   }
 
   return verdict(
     "comfortable",
     `You'd still finish the semester with ${formatCurrency(ending)}.`,
-    [
-      `That's ${formatCurrency(ending - buffer)} above your ${formatCurrency(buffer)} goal.`,
-      `Safe weekly spending moves from ${formatCurrency(baseWeekly)}/week to ${formatCurrency(newWeekly)}/week.`
-    ],
-    comfortRule
+    [`That's ${formatCurrency(ending - goal)} above your ${formatCurrency(goal)} goal.`, weeklyChange],
+    `Comfortable because your weekly budget drops ${percent(drop)}, within your ${percent(comfortableDropLimit)} limit.`
   );
 }

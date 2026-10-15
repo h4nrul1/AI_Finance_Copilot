@@ -169,13 +169,11 @@ export function findMaxAffordable(state: FinanceState, date: string): MaxAfforda
     return low;
   };
 
-  const { comfortMargin, weeklyDropLimit } = getVerdictSettings(state);
   return {
     date,
     comfortableMax: largestWhere((level) => level === "comfortable"),
     tightMax: largestWhere((level) => level !== "not-recommended"),
     goal: state.cash.targetEndingBuffer,
-    comfortMargin,
-    weeklyDropLimit
+    ...getVerdictSettings(state)
   };
 }

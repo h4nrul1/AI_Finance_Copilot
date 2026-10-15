@@ -138,7 +138,7 @@ export default function ScenariosPage() {
             Your plan is copied and replayed week by week with the change, using the same engine as Overview. Your real plan isn&apos;t touched.
           </Step>
           <Step number={3} title="Get a verdict, then decide">
-            Comfortable, Fits but tight, or Not recommended, based on your goal and strictness settings. Add it to your plan only if you go
+            Comfortable, Fits but tight, or Not recommended, based on your goal and your verdict thresholds. Add it to your plan only if you go
             ahead.
           </Step>
         </ol>

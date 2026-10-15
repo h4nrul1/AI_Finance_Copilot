@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { demoState } from "@/lib/data/seed";
 import { buildProjection } from "@/lib/finance/engine";
 import { compareScenarioToBaseline, findMaxAffordable, simulateRecurringExpenseChange } from "@/lib/finance/tools";
-import { getVerdictSettings, presetSettings } from "@/lib/finance/verdict-settings";
+import { DEFAULT_VERDICT_SETTINGS, getVerdictSettings, thresholdError } from "@/lib/finance/verdict-settings";
 import type { Scenario } from "@/types/finance";
 
 const chicagoTrip: Scenario = { id: "trip", name: "Chicago Trip", description: "", type: "purchase", amount: 500, date: "2026-11-12" };
@@ -86,37 +86,59 @@ describe("spending limits", () => {
   });
 });
 
-describe("verdict settings", () => {
-  it("lets a cautious student flag smaller purchases as tight", () => {
-    const cautious = { ...demoState, verdictSettings: presetSettings("cautious") };
-
-    expect(compareScenarioToBaseline(demoState, purchase(500, "2026-11-12")).verdict.level).toBe("comfortable");
-    expect(compareScenarioToBaseline(cautious, purchase(500, "2026-11-12")).verdict.level).toBe("tight");
+describe("verdict thresholds", () => {
+  const withThresholds = (comfortable: number, tight: number) => ({
+    ...demoState,
+    verdictSettings: { comfortableDropLimit: comfortable, tightDropLimit: tight }
   });
 
-  it("explains which rule produced the verdict", () => {
+  it("defaults to comfortable up to a 25% weekly cut and tight up to 100%", () => {
+    expect(getVerdictSettings(demoState)).toEqual(DEFAULT_VERDICT_SETTINGS);
+    expect(DEFAULT_VERDICT_SETTINGS).toEqual({ comfortableDropLimit: 0.25, tightDropLimit: 1 });
+  });
+
+  it("uses the student's two thresholds to split the three verdicts", () => {
+    // A $700 repair cuts the $235/week budget by about 27%.
+    const repair = purchase(700, "2026-10-20");
+
+    expect(compareScenarioToBaseline(withThresholds(0.3, 0.6), repair).verdict.level).toBe("comfortable");
+    expect(compareScenarioToBaseline(withThresholds(0.1, 0.6), repair).verdict.level).toBe("tight");
+    expect(compareScenarioToBaseline(withThresholds(0.1, 0.2), repair).verdict.level).toBe("not-recommended");
+  });
+
+  it("explains which threshold produced the verdict", () => {
     const tight = compareScenarioToBaseline(demoState, purchase(700, "2026-10-20")).verdict;
 
-    expect(tight.rule).toContain("your limit is 25%");
+    expect(tight.rule).toContain("drops 27%, more than your 25% limit for Comfortable");
   });
 
-  it("never lets settings override the overdraft and goal rules", () => {
-    const lenient = { ...demoState, verdictSettings: { preset: "custom" as const, comfortMargin: 0, weeklyDropLimit: 0.75 } };
+  it("moves the spending limits when thresholds change", () => {
+    const result = findMaxAffordable(withThresholds(0.1, 0.5), "2026-11-28");
+
+    // 10% and 50% of the $2,615 spare money.
+    expect(result.comfortableMax).toBe(261);
+    expect(result.tightMax).toBe(1307);
+  });
+
+  it("never lets thresholds override the overdraft and goal rules", () => {
+    const lenient = withThresholds(0.99, 1);
 
     expect(compareScenarioToBaseline(lenient, purchase(3000, "2026-12-01")).verdict.level).toBe("not-recommended");
+    expect(compareScenarioToBaseline(lenient, purchase(6900, "2026-09-30")).verdict.headline).toContain("negative");
   });
 
-  it("clamps out-of-range custom values and falls back for old saved plans", () => {
-    const wild = { ...demoState, verdictSettings: { preset: "custom" as const, comfortMargin: -50, weeklyDropLimit: 5 } };
+  it("rejects invalid thresholds and keeps older saved plans working", () => {
+    expect(thresholdError(25, 100)).toBeNull();
+    expect(thresholdError(60, 40)).toMatch(/must be lower/);
+    expect(thresholdError(0, 50)).toMatch(/between/);
+    expect(thresholdError(25, 120)).toMatch(/between/);
+    expect(getVerdictSettings(withThresholds(0.6, 0.4))).toEqual(DEFAULT_VERDICT_SETTINGS);
 
-    expect(getVerdictSettings(wild)).toEqual({ preset: "custom", comfortMargin: 0, weeklyDropLimit: 0.75 });
-    expect(getVerdictSettings(demoState).preset).toBe("balanced");
+    const legacy = { ...demoState, verdictSettings: { preset: "cautious", comfortMargin: 1000, weeklyDropLimit: 0.15 } as never };
+    expect(getVerdictSettings(legacy)).toEqual({ comfortableDropLimit: 0.15, tightDropLimit: 1 });
   });
 
-  it("uses the same comfort margin for the semester health badge", () => {
-    const strict = { ...demoState, verdictSettings: { preset: "custom" as const, comfortMargin: 3000, weeklyDropLimit: 0.25 } };
-
-    expect(buildProjection(demoState).semesterHealth).toBe("On Track");
-    expect(buildProjection(strict).semesterHealth).toBe("Tight");
+  it("keeps the semester health badge independent of the thresholds", () => {
+    expect(buildProjection(withThresholds(0.05, 0.1)).semesterHealth).toBe(buildProjection(demoState).semesterHealth);
   });
 });

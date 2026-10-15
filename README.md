@@ -18,7 +18,7 @@ It ships with realistic seeded data, cash-flow projections, safe weekly spending
 
 - Overview dashboard with current cash, projected semester-end cash, safe weekly spending, semester health, and every planned payment until finals.
 - Semester cash-flow chart using deterministic projections.
-- Semester Plan with per-item and section totals, the safe-spending formula, an editable semester goal, and verdict strictness presets.
+- Semester Plan with per-item and section totals, the safe-spending formula, an editable semester goal, and student-set verdict thresholds.
 - Scenario Lab: a guided builder for purchases, surprise bills, investing, income loss, and bill changes, with a live example and "Add to my plan".
 - "Can I Afford This?" purchase checker.
 - Copilot chat with visible tool usage and a calculation card for every answer, including spending limits ("how much can I spend on X").
@@ -46,7 +46,7 @@ How a copilot question is answered:
 
 1. `lib/ai/tool-registry.ts` describes the finance tools to the model as function definitions (built from the student's own plan, so income and expense names are real enums).
 2. The model picks a tool and fills in arguments. The registry validates them (positive amounts, dates inside the semester, known names) and returns errors to the model so it can retry or ask a follow-up question.
-3. The deterministic engine runs the scenario. `lib/finance/verdict.ts` grades it as **Comfortable**, **Fits, but tight**, or **Not recommended** and says which rule decided it. Overdrafts and ending below the goal are always "Not recommended"; the line between "tight" and "comfortable" comes from the student's strictness setting (`lib/finance/verdict-settings.ts`: Cautious, Balanced, Flexible, or custom).
+3. The deterministic engine runs the scenario. `lib/finance/verdict.ts` grades it as **Comfortable**, **Fits, but tight**, or **Not recommended** and says which rule decided it. Overdrafts and ending below the goal are always "Not recommended". Otherwise the verdict depends on how much the decision cuts the safe weekly budget, compared with two thresholds the student sets (`lib/finance/verdict-settings.ts`; default: Comfortable up to a 25% cut, Fits but tight up to 100%).
 4. The model explains the result. The UI shows the engine's verdict card and a "Show calculation" table, so the numbers on screen never come from the model.
 
 Without an API key, a keyword-based fallback calls the same tools, so the demo behaves the same offline.
@@ -160,7 +160,7 @@ If you change calculations (`lib/finance/*`) or verdict rules, add or update a t
 7. Ask: "What happens if I stop working in October?"
 8. Ask: "What is an ETF?"
 9. On Spending, log a purchase and change a category.
-10. On Semester Plan, switch verdict strictness to Cautious and change the goal; watch the weekly budget and verdicts update.
+10. On Semester Plan, change the verdict thresholds (e.g. 10% and 50%) and the goal; watch the purchase limits, weekly budget, and verdicts update.
 
 ## Disclaimer
 

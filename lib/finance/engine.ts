@@ -7,8 +7,7 @@ import type {
   SafeWeeklyBreakdown,
   UpcomingEvent
 } from "@/types/finance";
-import { asDate, eachWeek, expandRecurringDates, toISODate, weeksBetween } from "./dates";
-import { getVerdictSettings } from "./verdict-settings";
+import { addDays, asDate, eachWeek, expandRecurringDates, toISODate, weeksBetween } from "./dates";
 
 interface CashEvent {
   id: string;
@@ -19,6 +18,9 @@ interface CashEvent {
   required: boolean;
   category: UpcomingEvent["category"];
 }
+
+/** Semester health is "On Track" when the plan ends at least this far above the goal. */
+export const HEALTH_CUSHION = 750;
 
 function withinWindow(date: string, start: string, end: string) {
   const value = asDate(date).getTime();
@@ -170,9 +172,8 @@ export function buildProjection(state: FinanceState): FinancialProjection {
   }));
 
   const buffer = state.cash.targetEndingBuffer;
-  const { comfortMargin } = getVerdictSettings(state);
   const semesterHealth =
-    projectedEndingBalance >= buffer + comfortMargin ? "On Track" : projectedEndingBalance >= buffer ? "Tight" : "At Risk";
+    projectedEndingBalance >= buffer + HEALTH_CUSHION ? "On Track" : projectedEndingBalance >= buffer ? "Tight" : "At Risk";
 
   return {
     timeline,
@@ -188,22 +189,40 @@ export function buildProjection(state: FinanceState): FinancialProjection {
 }
 
 export interface PlanItemTotal {
-  /** Payments that fall between today and the end of the semester. */
+  /** Payments that fall between today and the end of the semester; only these are counted. */
   count: number;
   /** Sum of those payments, always positive. */
   total: number;
+  /** Payments dated before today. They already happened, so checking already reflects them. */
+  pastCount: number;
+  /** Where the item sits relative to the counted window, for explaining an item that isn't counted. */
+  timing: "upcoming" | "past" | "after-semester";
+}
+
+type PlanItem = Pick<Expense, "startDate" | "endDate" | "recurring" | "frequency">;
+
+function pastPayments(item: PlanItem, currentDate: string, endDate: string) {
+  if (!item.recurring) return item.startDate < currentDate ? 1 : 0;
+  const yesterday = toISODate(addDays(asDate(currentDate), -1));
+  return expandRecurringDates(item.startDate, item.endDate ?? endDate, item.frequency ?? "monthly", item.startDate, yesterday).length;
 }
 
 /** What each income and expense contributes to the rest of the semester, keyed by item id. */
 export function planItemTotals(state: FinanceState): Record<string, PlanItemTotal> {
   const { currentDate, endDate } = state.semester;
   const totals: Record<string, PlanItemTotal> = {};
-  const add = (id: string, events: CashEvent[]) => {
-    totals[id] = { count: events.length, total: events.reduce((sum, event) => sum + Math.abs(event.amount), 0) };
+  const add = (id: string, item: PlanItem, events: CashEvent[]) => {
+    const pastCount = pastPayments(item, currentDate, endDate);
+    totals[id] = {
+      count: events.length,
+      total: events.reduce((sum, event) => sum + Math.abs(event.amount), 0),
+      pastCount,
+      timing: events.length > 0 ? "upcoming" : pastCount > 0 ? "past" : "after-semester"
+    };
   };
 
-  state.incomes.forEach((income) => add(income.id, incomeEvents(income, currentDate, endDate)));
-  state.expenses.forEach((expense) => add(expense.id, expenseEvents(expense, currentDate, endDate)));
+  state.incomes.forEach((income) => add(income.id, income, incomeEvents(income, currentDate, endDate)));
+  state.expenses.forEach((expense) => add(expense.id, expense, expenseEvents(expense, currentDate, endDate)));
   return totals;
 }
 

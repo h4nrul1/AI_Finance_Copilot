@@ -71,15 +71,14 @@ export interface FinancialGoal {
   description: string;
 }
 
-export type VerdictPreset = "cautious" | "balanced" | "flexible" | "custom";
-
-/** How strict affordability verdicts are. Overdrafts and ending below the goal are always "Not recommended". */
+/**
+ * The student's verdict thresholds, measured as how much a decision cuts their safe weekly budget (0-1).
+ * Comfortable: cut <= comfortableDropLimit. Fits, but tight: up to tightDropLimit. Not recommended: above it.
+ * Going below $0 or ending below the goal is always "Not recommended", whatever these are.
+ */
 export interface VerdictSettings {
-  preset: VerdictPreset;
-  /** Ending at least this far above the goal counts as comfortable. */
-  comfortMargin: number;
-  /** A cut to safe weekly spending of at least this share (0-1) makes a scenario "tight". */
-  weeklyDropLimit: number;
+  comfortableDropLimit: number;
+  tightDropLimit: number;
 }
 
 export interface FinanceState {
@@ -201,6 +200,6 @@ export interface MaxAffordableResult {
   /** Largest amount that is not "Not recommended" (0 if nothing is). */
   tightMax: number;
   goal: number;
-  comfortMargin: number;
-  weeklyDropLimit: number;
+  comfortableDropLimit: number;
+  tightDropLimit: number;
 }

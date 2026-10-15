@@ -90,9 +90,9 @@ function MaxAffordableDetail({ result }: { result: MaxAffordableResult }) {
         ))}
       </div>
       <p className="mt-3 text-xs leading-5 text-muted">
-        Comfortable means you&apos;d end at least {formatCurrency(result.comfortMargin)} above your {formatCurrency(result.goal)} goal and cut
-        weekly spending by less than {Math.round(result.weeklyDropLimit * 100)}%. Change these on the Semester Plan page. Calculated by
-        the semester engine, not the AI.
+        Based on your thresholds: Comfortable if your weekly budget drops {Math.round(result.comfortableDropLimit * 100)}% or less, Fits,
+        but tight up to {Math.round(result.tightDropLimit * 100)}%. Ending below your {formatCurrency(result.goal)} goal is never
+        recommended. Change thresholds on the Semester Plan page. Calculated by the semester engine, not the AI.
       </p>
     </div>
   );
