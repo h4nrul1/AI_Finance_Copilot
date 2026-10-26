@@ -12,8 +12,9 @@ import {
   Settings2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Welcome } from "@/components/onboarding/welcome";
 import { useFinance } from "@/components/providers/finance-provider";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -25,7 +26,20 @@ const nav = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { state, resetDemoData } = useFinance();
+  const { state, status, startOver } = useFinance();
+  const isDemo = state.mode !== "personal";
+  const semesterOver = !isDemo && state.semester.currentDate > state.semester.endDate;
+
+  // Nothing to show until the saved plan is read; avoids flashing demo numbers at a returning student.
+  if (status === "loading") return <div className="min-h-screen" />;
+  if (status === "needs-setup" && !pathname.startsWith("/setup")) return <Welcome />;
+
+  function confirmStartOver() {
+    const message = isDemo
+      ? "Leave the demo and go back to the start screen?"
+      : "Start over? This deletes your plan from this browser and can't be undone.";
+    if (window.confirm(message)) startOver();
+  }
 
   return (
     <div className="min-h-screen lg:flex">
@@ -36,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <p className="text-sm font-semibold text-ink">SemesterFi</p>
-            <p className="text-xs text-muted">{state.student.school}</p>
+            <p className="text-xs text-muted">{state.student.school || "Semester planner"}</p>
           </div>
         </div>
 
@@ -61,19 +75,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-6 hidden rounded-lg border border-line bg-paper p-4 lg:block">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Current student</p>
-          <p className="mt-2 font-semibold text-ink">{state.student.name}</p>
-          <p className="text-sm text-muted">
-            {state.student.year} · {state.semester.name}
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{isDemo ? "Demo plan" : "Your plan"}</p>
+          <p className="mt-2 font-semibold text-ink">{state.student.name || "You"}</p>
+          <p className="text-sm text-muted">{state.semester.name}</p>
+          <p className="mt-1 text-xs text-muted">
+            {isDemo ? `Sample data · fixed date ${formatDate(state.semester.currentDate)}` : `Today is ${formatDate(state.semester.currentDate)}`}
           </p>
-          <Button variant="secondary" size="sm" className="mt-4 w-full" onClick={resetDemoData}>
+          <Button variant="secondary" size="sm" className="mt-4 w-full" onClick={confirmStartOver}>
             <RotateCcw size={15} />
-            Reset Demo Data
+            {isDemo ? "Leave demo" : "Start over"}
           </Button>
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</main>
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        {semesterOver ? (
+          <div className="mx-auto mb-5 max-w-7xl rounded-lg border border-gold/50 bg-gold/10 p-4 text-sm text-ink">
+            {state.semester.name} ended on {formatDate(state.semester.endDate)}. Update your semester dates on{" "}
+            <Link href="/semester" className="font-semibold underline">
+              Semester Plan
+            </Link>{" "}
+            to plan the next one.
+          </div>
+        ) : null}
+        {children}
+      </main>
     </div>
   );
 }

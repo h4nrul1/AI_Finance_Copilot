@@ -2,14 +2,25 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Expense, FinanceState, IncomeEvent, Scenario, Transaction, VerdictSettings } from "@/types/finance";
+import { withToday } from "@/lib/data/blank-plan";
 import { demoState } from "@/lib/data/seed";
+import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
 import { applyScenario } from "@/lib/finance/tools";
 
+/** "loading" until the saved plan is read; "needs-setup" when this browser has no plan yet. */
+export type PlanStatus = "loading" | "needs-setup" | "ready";
+
 interface FinanceContextValue {
   state: FinanceState;
+  status: PlanStatus;
   projection: ReturnType<typeof buildProjection>;
-  resetDemoData: () => void;
+  /** Load the sample student's plan. */
+  startDemo: () => void;
+  /** Start using a plan the student created (blank or drafted during setup). */
+  startPlan: (plan: FinanceState) => void;
+  /** Delete this browser's plan and go back to the welcome screen. */
+  startOver: () => void;
   updateCash: (checking: number, savings: number, buffer: number) => void;
   updateSemester: (name: string, startDate: string, endDate: string) => void;
   updateVerdictSettings: (settings: VerdictSettings) => void;
@@ -33,35 +44,58 @@ function upsert<T extends { id: string }>(items: T[], item: T) {
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<FinanceState>(demoState);
-  // Saving waits until the saved plan has been read, so the first render's demo data never overwrites it.
-  const [loaded, setLoaded] = useState(false);
+  const [status, setStatus] = useState<PlanStatus>("loading");
 
   useEffect(() => {
+    let saved: FinanceState | null = null;
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) setState(JSON.parse(saved));
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) saved = JSON.parse(raw) as FinanceState;
     } catch {
-      setState(demoState);
+      saved = null;
     }
-    setLoaded(true);
+    if (saved) {
+      setState(withToday(saved, localToday()));
+      setStatus("ready");
+    } else {
+      setStatus("needs-setup");
+    }
   }, []);
 
+  // Only save once a plan exists, so the first render's placeholder never overwrites a saved plan.
   useEffect(() => {
-    if (!loaded) return;
+    if (status !== "ready") return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       // Storage can be unavailable (private mode, full quota); the plan still works for this session.
     }
-  }, [loaded, state]);
+  }, [status, state]);
 
   const projection = useMemo(() => buildProjection(state), [state]);
 
   const value = useMemo<FinanceContextValue>(
     () => ({
       state,
+      status,
       projection,
-      resetDemoData: () => setState(demoState),
+      startDemo: () => {
+        setState(demoState);
+        setStatus("ready");
+      },
+      startPlan: (plan) => {
+        setState(withToday(plan, localToday()));
+        setStatus("ready");
+      },
+      startOver: () => {
+        try {
+          window.localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Nothing saved to remove.
+        }
+        setState(demoState);
+        setStatus("needs-setup");
+      },
       updateCash: (checking, savings, buffer) =>
         setState((current) => ({ ...current, cash: { checking, savings, targetEndingBuffer: buffer } })),
       updateSemester: (name, startDate, endDate) =>
@@ -77,7 +111,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setState((current) => ({ ...current, transactions: current.transactions.filter((transaction) => transaction.id !== id) })),
       applyScenarioToPlan: (scenario) => setState((current) => applyScenario(current, scenario))
     }),
-    [projection, state]
+    [projection, state, status]
   );
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;

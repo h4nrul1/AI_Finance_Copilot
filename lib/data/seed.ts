@@ -1,6 +1,7 @@
 import type { FinanceState } from "@/types/finance";
 
 export const demoState: FinanceState = {
+  mode: "demo",
   student: {
     name: "Hanru Li",
     school: "Virginia Tech",
