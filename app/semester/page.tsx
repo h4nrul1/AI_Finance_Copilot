@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Save, Target, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,13 @@ export default function SemesterPage() {
               <strong>4. Add your expenses</strong> and tick <em>Required</em> for rent, tuition, and bills.
             </li>
           </ol>
-          <p className="mt-3 text-sm text-muted">Then set your semester goal at the bottom and head to Overview to see your weekly budget.</p>
+          <p className="mt-3 text-sm text-muted">
+            Then set your semester goal at the bottom and head to Overview to see your weekly budget. Prefer answering questions?{" "}
+            <Link href="/setup" className="font-semibold text-moss underline">
+              Set up with the AI
+            </Link>
+            .
+          </p>
         </Card>
       ) : null}
 

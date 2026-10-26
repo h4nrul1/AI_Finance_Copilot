@@ -18,7 +18,11 @@ export function Welcome() {
   const today = localToday();
   const semester = guessSemester(today);
 
-  function startFresh() {
+  function startWithQuestions() {
+    router.push(name.trim() ? `/setup?name=${encodeURIComponent(name.trim())}` : "/setup");
+  }
+
+  function startBlank() {
     startPlan(createBlankPlan(today, name));
     router.push("/semester");
   }
@@ -42,17 +46,20 @@ export function Welcome() {
             <Sparkles className="text-moss" size={22} />
             <h2 className="mt-3 text-lg font-semibold text-ink">Start my own plan</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              Uses today&apos;s date ({formatDate(today)}) and starts you on {semester.name}. You&apos;ll add your cash, income, and
-              expenses next.
+              Answer a few quick questions and the AI drafts your {semester.name} plan from today ({formatDate(today)}). You review
+              everything before it&apos;s saved.
             </p>
             <div className="mt-4">
               <Label htmlFor="welcome-name">First name (optional)</Label>
               <Input id="welcome-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Jordan" />
             </div>
-            <Button className="mt-4" onClick={startFresh}>
-              Start fresh
+            <Button className="mt-4" onClick={startWithQuestions}>
+              Set up my plan
               <ArrowRight size={16} />
             </Button>
+            <button type="button" onClick={startBlank} className="mt-2 text-sm text-muted underline hover:text-ink">
+              Or fill in a blank plan myself
+            </button>
           </section>
 
           <section className="flex flex-col rounded-lg border border-line bg-white p-5 shadow-soft">
