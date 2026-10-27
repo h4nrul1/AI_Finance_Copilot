@@ -1,34 +1,23 @@
-import {
-  DRAFT_FREQUENCIES,
-  EXPENSE_CATEGORIES,
-  SETUP_QUESTIONS,
-  validateDraft,
-  type PlanDraft,
-  type SetupAnswer
-} from "@/lib/finance/plan-draft";
+import { thanksgivingDate } from "@/lib/finance/dates";
+import { DRAFT_FREQUENCIES, EXPENSE_CATEGORIES, validateItems, type DraftItems } from "@/lib/finance/plan-draft";
 
 const OPENAI_TIMEOUT_MS = 30_000;
 
-const SETUP_SYSTEM_PROMPT = `
-You turn a college student's answers about their money into a draft semester budget plan.
-
-Where each field comes from:
-- semester: the first answer. Use a tidy name like "Fall 2026". If the start date isn't given, use the usual start of that term (Fall: late August, Spring: mid January, Summer: mid May). If the term or end date isn't given, infer the current term from today's date and add a note.
-- cash.checking and cash.savings: the checking/savings answer.
-- cash.goal: the LAST answer ("How much would you like to have left when finals end?"). "At least 400" means 400.
-- incomes and expenses: all the other answers.
-- Use null for checking, savings, or goal only if the student truly didn't give it.
+const EXTRAS_SYSTEM_PROMPT = `
+A college student is setting up a semester budget. They already entered their checking balance, regular income, and regular bills.
+In one free-text answer they describe anything else coming up. Turn it into plan items.
 
 Rules:
-- Use only what the student said. Never invent income, expenses, or amounts. Leave a list empty if nothing was mentioned.
-- Amounts are US dollars as plain numbers. If the student gives a range, use the middle.
-- Keep the frequency the student used: "$40 a week" is a weekly $40 expense, "every two weeks" is biweekly. Never convert between frequencies.
-- A monthly total for a category (e.g. "$300 a month on groceries") is one monthly expense.
-- Dates are YYYY-MM-DD. Today's date is given; dates without a year are in the semester being planned.
-- For recurring items, startDate is the next due date on or after today (e.g. rent "on the 1st" means the next 1st). If no day is given, use today. endDate is null unless the student says when it stops.
-- Required expenses are hard to skip: rent, utilities, tuition, fees, textbooks, groceries, phone, transportation, insurance, loan payments. Eating out, entertainment, shopping, streaming, and trips are not required.
-- Categories: rent and utilities are Housing; phone, internet, and streaming are Subscriptions; use Other only if nothing fits.
-- notes: at most 4 short notes, written to the student, about assumptions you made. Combine similar ones ("I assumed your monthly bills are due on the 1st.").
+- Use only what the student wrote. Never invent items or amounts. Return empty lists if nothing usable was mentioned.
+- Amounts are US dollars as plain numbers. Estimates are fine: for a range, use the higher end for expenses and the lower end for income, and add a note.
+- Keep the frequency the student used: "$40 a week" is a weekly $40 expense. Never convert between frequencies.
+- Dates are YYYY-MM-DD within the semester given. Dates without a year are in that semester.
+- Turn named times into dates. Use the key dates given in the message for holidays (for travel, use the day before the holiday). "Early/mid/late <month>" means the 1st, 15th, or 25th; "next month" means the 1st of next month; "end of semester" means the semester end date.
+- Only if no time at all is given, use today and add a note.
+- endDate is null unless the student says when a recurring item stops.
+- Required expenses are hard to skip (tuition, fees, textbooks, medical, insurance, loan payments). Trips, eating out, entertainment, shopping, and gifts are not required.
+- Pick the closest category; use Other only if nothing fits.
+- notes: at most 3 short notes to the student about assumptions you made.
 `.trim();
 
 const itemProperties = {
@@ -40,23 +29,11 @@ const itemProperties = {
 };
 
 /** JSON schema for OpenAI structured outputs. Strict mode requires every property to be listed as required. */
-const PLAN_DRAFT_SCHEMA = {
+const EXTRAS_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["semester", "cash", "incomes", "expenses", "notes"],
+  required: ["incomes", "expenses", "notes"],
   properties: {
-    semester: {
-      type: "object",
-      additionalProperties: false,
-      required: ["name", "startDate", "endDate"],
-      properties: { name: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" } }
-    },
-    cash: {
-      type: "object",
-      additionalProperties: false,
-      required: ["checking", "savings", "goal"],
-      properties: { checking: { type: ["number", "null"] }, savings: { type: ["number", "null"] }, goal: { type: ["number", "null"] } }
-    },
     incomes: {
       type: "array",
       items: { type: "object", additionalProperties: false, required: Object.keys(itemProperties), properties: itemProperties }
@@ -74,19 +51,13 @@ const PLAN_DRAFT_SCHEMA = {
   }
 };
 
-export function formatAnswers(answers: SetupAnswer[]) {
-  return SETUP_QUESTIONS.map((question) => {
-    const answer = answers.find((item) => item.id === question.id)?.answer.trim();
-    return `Q: ${question.question}\nA: ${answer || "(skipped)"}`;
-  }).join("\n\n");
-}
-
-/** Asks the model for a draft plan, then validates it. Throws if the model can't be reached. */
-export async function draftPlanWithOpenAI(
+/** Asks the model to turn the student's free-text extras into plan items, then validates them. */
+export async function extractExtrasWithOpenAI(
   apiKey: string,
-  answers: SetupAnswer[],
-  today: string
-): Promise<{ draft: PlanDraft; warnings: string[] }> {
+  text: string,
+  today: string,
+  semester: { name: string; endDate: string }
+): Promise<{ items: DraftItems; warnings: string[] }> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -94,29 +65,22 @@ export async function draftPlanWithOpenAI(
       model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
       temperature: 0,
       messages: [
-        { role: "system", content: SETUP_SYSTEM_PROMPT },
-        { role: "user", content: `Today is ${today}.\n\n${formatAnswers(answers)}` }
+        { role: "system", content: EXTRAS_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Today is ${today}. The semester is ${semester.name} and ends ${semester.endDate}.\nKey dates: Thanksgiving is ${thanksgivingDate(
+            Number(today.slice(0, 4))
+          )}.\n\nStudent's answer: ${text}`
+        }
       ],
-      response_format: { type: "json_schema", json_schema: { name: "plan_draft", strict: true, schema: PLAN_DRAFT_SCHEMA } }
+      response_format: { type: "json_schema", json_schema: { name: "extra_items", strict: true, schema: EXTRAS_SCHEMA } }
     }),
     signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS)
   });
   if (!response.ok) throw new Error(`OpenAI request failed with ${response.status}: ${(await response.text()).slice(0, 500)}`);
 
-  const json = (await response.json()) as { choices?: Array<{ message?: { content?: string | null; refusal?: string | null } }> };
+  const json = (await response.json()) as { choices?: Array<{ message?: { content?: string | null } }> };
   const content = json.choices?.[0]?.message?.content;
-  if (!content) throw new Error("OpenAI returned no draft");
-  return validateDraft(withGoalFallback(JSON.parse(content), answers), today);
-}
-
-/**
- * The goal question has a single, dedicated answer, so if the model misses it we can read the amount directly
- * ("at least $400" -> 400) instead of falling back to a default.
- */
-export function withGoalFallback(raw: unknown, answers: SetupAnswer[]): unknown {
-  const draft = raw as { cash?: { goal?: unknown } } | null;
-  if (!draft?.cash || typeof draft.cash.goal === "number") return raw;
-  const goalAnswer = answers.find((answer) => answer.id === "goal")?.answer ?? "";
-  const match = goalAnswer.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
-  return match ? { ...draft, cash: { ...draft.cash, goal: Number(match[0]) } } : raw;
+  if (!content) throw new Error("OpenAI returned no items");
+  return validateItems(JSON.parse(content), today);
 }

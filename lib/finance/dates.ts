@@ -71,3 +71,10 @@ export function expandRecurringDates(start: string, end: string, frequency: Freq
 
   return dates;
 }
+
+/** US Thanksgiving: the fourth Thursday of November. */
+export function thanksgivingDate(year: number) {
+  const firstOfNovember = new Date(year, 10, 1, 12);
+  const firstThursday = 1 + ((4 - firstOfNovember.getDay() + 7) % 7);
+  return toISODate(new Date(year, 10, firstThursday + 21, 12));
+}

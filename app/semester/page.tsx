@@ -171,7 +171,12 @@ function CashCard() {
     <Card>
       <CardHeader title="Available Money" eyebrow="Cash position" />
       <div className="grid gap-3 sm:grid-cols-2">
-        <NumberField id="checking" label="Checking (counted)" value={checking} onChange={setChecking} />
+        <NumberField
+          id="checking"
+          label={state.cash.checkingEstimated ? "Checking (≈ estimate)" : "Checking (counted)"}
+          value={checking}
+          onChange={setChecking}
+        />
         <NumberField id="savings" label="Savings (not counted)" value={savings} onChange={setSavings} />
       </div>
       <Button className="mt-4" disabled={!dirty} onClick={() => updateCash(checking, savings, state.cash.targetEndingBuffer)}>
@@ -452,7 +457,7 @@ function EditableIncomeTable({
           <div key={income.id} className="rounded-lg border border-line bg-paper p-3">
             <div className="grid gap-3 md:grid-cols-[1.4fr_120px_150px_130px_44px] md:items-end">
               <Field label="Name" value={income.name} onChange={(name) => onSave({ ...income, name })} />
-              <NumberField label="Amount" value={income.amount} onChange={(amount) => onSave({ ...income, amount })} />
+              <NumberField label={income.estimated ? "Amount (est.)" : "Amount"} value={income.amount} onChange={(amount) => onSave({ ...income, amount, estimated: false })} />
               <Field label="Date" type="date" value={income.startDate} onChange={(startDate) => onSave({ ...income, startDate })} />
               <FrequencySelect
                 recurring={income.recurring}
@@ -523,7 +528,7 @@ function EditableExpenseTable({
                   ))}
                 </Select>
               </div>
-              <NumberField label="Amount" value={expense.amount} onChange={(amount) => onSave({ ...expense, amount })} />
+              <NumberField label={expense.estimated ? "Amount (est.)" : "Amount"} value={expense.amount} onChange={(amount) => onSave({ ...expense, amount, estimated: false })} />
               <Field label="Date" type="date" value={expense.startDate} onChange={(startDate) => onSave({ ...expense, startDate })} />
               <FrequencySelect
                 recurring={expense.recurring}

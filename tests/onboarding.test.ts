@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createBlankPlan, guessSemester, withToday } from "@/lib/data/blank-plan";
 import { demoState } from "@/lib/data/seed";
-import { localToday } from "@/lib/finance/dates";
+import { localToday, thanksgivingDate } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
 
 describe("new plans", () => {
@@ -47,5 +47,13 @@ describe("today's date", () => {
 
   it("formats the local date as YYYY-MM-DD", () => {
     expect(localToday(new Date(2026, 0, 5, 23, 30))).toBe("2026-01-05");
+  });
+});
+
+describe("holiday dates", () => {
+  it("finds US Thanksgiving, the fourth Thursday of November", () => {
+    expect(thanksgivingDate(2026)).toBe("2026-11-26");
+    expect(thanksgivingDate(2027)).toBe("2027-11-25");
+    expect(thanksgivingDate(2024)).toBe("2024-11-28");
   });
 });

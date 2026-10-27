@@ -46,8 +46,8 @@ export function Welcome() {
             <Sparkles className="text-moss" size={22} />
             <h2 className="mt-3 text-lg font-semibold text-ink">Start my own plan</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              Answer a few quick questions and the AI drafts your {semester.name} plan from today ({formatDate(today)}). You review
-              everything before it&apos;s saved.
+              Three quick steps, about a minute: tap rough ranges for your cash, income, and bills. We plan from today (
+              {formatDate(today)}) through the end of {semester.name}, and you review it before saving.
             </p>
             <div className="mt-4">
               <Label htmlFor="welcome-name">First name (optional)</Label>
