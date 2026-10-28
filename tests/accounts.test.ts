@@ -47,6 +47,16 @@ describe("guest-only mode", () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     expect(supabaseConfig()).toBeNull();
+
+    // A malformed URL (e.g. the variable name pasted twice) also falls back to guest-only instead of crashing.
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "NEXT_PUBLIC_SUPABASE_URL=https://abc.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-key";
+    expect(supabaseConfig()).toBeNull();
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co";
+    expect(supabaseConfig()).toEqual({ url: "https://abc.supabase.co", key: "test-key" });
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
     if (saved.url) process.env.NEXT_PUBLIC_SUPABASE_URL = saved.url;
     if (saved.key) process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = saved.key;
   });
