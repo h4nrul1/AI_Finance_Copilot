@@ -92,6 +92,10 @@ OPENAI_MODEL=gpt-4o-mini
 - The API is prepaid: add credits under **Settings → Billing** (adding a card alone is not enough). $5 lasts a long time with `gpt-4o-mini`. Set a monthly budget and turn off auto-recharge.
 - Don't switch `OPENAI_MODEL` to a GPT-5-family model yet: the request sends a custom `temperature`, which those models may reject.
 
+### 3b. Accounts (optional)
+
+Without Supabase keys the app runs in **guest-only mode**: everything works and plans are saved in the browser. To work on log-in and saved accounts, ask the project lead for the Supabase keys and add them to `.env.local` (see `.env.example`). The database table is defined in `supabase/migrations/0001_plans.sql`.
+
 ### 4. Run it
 
 ```bash
