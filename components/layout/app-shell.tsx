@@ -32,7 +32,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Nothing to show until the saved plan is read; avoids flashing demo numbers at a returning student.
   if (status === "loading") return <div className="min-h-screen" />;
-  if (status === "needs-setup" && !pathname.startsWith("/setup")) return <Welcome />;
+  // Setup is a focused, full-page flow without the sidebar.
+  if (pathname.startsWith("/setup")) return <>{children}</>;
+  if (status === "needs-setup") return <Welcome />;
 
   function confirmStartOver() {
     const message = isDemo

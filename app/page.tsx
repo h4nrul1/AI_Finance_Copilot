@@ -2,6 +2,7 @@
 
 import { CalendarClock, TrendingDown, TrendingUp } from "lucide-react";
 import { CashFlowChart } from "@/components/charts/cash-flow-chart";
+import { AccuracyCard } from "@/components/dashboard/accuracy-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { SafeSpendingBreakdown } from "@/components/dashboard/safe-spending-breakdown";
 import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
@@ -31,6 +32,8 @@ export default function OverviewPage() {
         </div>
         <Badge tone={healthTone}>{projection.semesterHealth}</Badge>
       </header>
+
+      <AccuracyCard />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Save, Target, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,13 @@ export default function SemesterPage() {
               <strong>4. Add your expenses</strong> and tick <em>Required</em> for rent, tuition, and bills.
             </li>
           </ol>
-          <p className="mt-3 text-sm text-muted">Then set your semester goal at the bottom and head to Overview to see your weekly budget.</p>
+          <p className="mt-3 text-sm text-muted">
+            Then set your semester goal at the bottom and head to Overview to see your weekly budget. Prefer answering questions?{" "}
+            <Link href="/setup" className="font-semibold text-moss underline">
+              Set up with the AI
+            </Link>
+            .
+          </p>
         </Card>
       ) : null}
 
@@ -164,7 +171,12 @@ function CashCard() {
     <Card>
       <CardHeader title="Available Money" eyebrow="Cash position" />
       <div className="grid gap-3 sm:grid-cols-2">
-        <NumberField id="checking" label="Checking (counted)" value={checking} onChange={setChecking} />
+        <NumberField
+          id="checking"
+          label={state.cash.checkingEstimated ? "Checking (≈ estimate)" : "Checking (counted)"}
+          value={checking}
+          onChange={setChecking}
+        />
         <NumberField id="savings" label="Savings (not counted)" value={savings} onChange={setSavings} />
       </div>
       <Button className="mt-4" disabled={!dirty} onClick={() => updateCash(checking, savings, state.cash.targetEndingBuffer)}>
@@ -445,7 +457,7 @@ function EditableIncomeTable({
           <div key={income.id} className="rounded-lg border border-line bg-paper p-3">
             <div className="grid gap-3 md:grid-cols-[1.4fr_120px_150px_130px_44px] md:items-end">
               <Field label="Name" value={income.name} onChange={(name) => onSave({ ...income, name })} />
-              <NumberField label="Amount" value={income.amount} onChange={(amount) => onSave({ ...income, amount })} />
+              <NumberField label={income.estimated ? "Amount (est.)" : "Amount"} value={income.amount} onChange={(amount) => onSave({ ...income, amount, estimated: false })} />
               <Field label="Date" type="date" value={income.startDate} onChange={(startDate) => onSave({ ...income, startDate })} />
               <FrequencySelect
                 recurring={income.recurring}
@@ -516,7 +528,7 @@ function EditableExpenseTable({
                   ))}
                 </Select>
               </div>
-              <NumberField label="Amount" value={expense.amount} onChange={(amount) => onSave({ ...expense, amount })} />
+              <NumberField label={expense.estimated ? "Amount (est.)" : "Amount"} value={expense.amount} onChange={(amount) => onSave({ ...expense, amount, estimated: false })} />
               <Field label="Date" type="date" value={expense.startDate} onChange={(startDate) => onSave({ ...expense, startDate })} />
               <FrequencySelect
                 recurring={expense.recurring}

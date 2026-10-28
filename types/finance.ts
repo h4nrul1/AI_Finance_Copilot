@@ -30,6 +30,8 @@ export interface CashPosition {
   checking: number;
   savings: number;
   targetEndingBuffer: number;
+  /** True when checking came from a range during setup rather than an exact number. */
+  checkingEstimated?: boolean;
 }
 
 export interface IncomeEvent {
@@ -42,6 +44,8 @@ export interface IncomeEvent {
   frequency?: Frequency;
   category: "Income";
   guaranteed: boolean;
+  /** True when the amount is a setup estimate the student hasn't confirmed yet. */
+  estimated?: boolean;
 }
 
 export interface Expense {
@@ -54,6 +58,8 @@ export interface Expense {
   recurring: boolean;
   frequency?: Frequency;
   required: boolean;
+  /** True when the amount is a setup estimate the student hasn't confirmed yet. */
+  estimated?: boolean;
 }
 
 export interface Transaction {
@@ -96,6 +102,8 @@ export interface FinanceState {
    * Plans saved before this existed have no mode and are treated as demo plans.
    */
   mode?: "demo" | "personal";
+  /** Set when the student hides the "make your plan more accurate" card on Overview. */
+  accuracyCardDismissed?: boolean;
 }
 
 export type ScenarioType =

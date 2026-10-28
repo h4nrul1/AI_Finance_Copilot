@@ -24,6 +24,7 @@ interface FinanceContextValue {
   updateCash: (checking: number, savings: number, buffer: number) => void;
   updateSemester: (name: string, startDate: string, endDate: string) => void;
   updateVerdictSettings: (settings: VerdictSettings) => void;
+  dismissAccuracyCard: () => void;
   saveIncome: (income: IncomeEvent) => void;
   deleteIncome: (id: string) => void;
   saveExpense: (expense: Expense) => void;
@@ -97,7 +98,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setStatus("needs-setup");
       },
       updateCash: (checking, savings, buffer) =>
-        setState((current) => ({ ...current, cash: { checking, savings, targetEndingBuffer: buffer } })),
+        setState((current) => ({
+          ...current,
+          // A setup estimate stays an estimate until the checking amount itself is changed.
+          cash: { checking, savings, targetEndingBuffer: buffer, checkingEstimated: current.cash.checkingEstimated && checking === current.cash.checking }
+        })),
+      dismissAccuracyCard: () => setState((current) => ({ ...current, accuracyCardDismissed: true })),
       updateSemester: (name, startDate, endDate) =>
         setState((current) => ({ ...current, semester: { ...current.semester, name, startDate, endDate } })),
       updateVerdictSettings: (verdictSettings) => setState((current) => ({ ...current, verdictSettings })),
