@@ -91,6 +91,11 @@ export interface FinanceState {
   goals: FinancialGoal[];
   /** Optional so plans saved before this setting existed still load. */
   verdictSettings?: VerdictSettings;
+  /**
+   * "demo" plans keep their fixed sample date; "personal" plans move "today" to the real date each time they load.
+   * Plans saved before this existed have no mode and are treated as demo plans.
+   */
+  mode?: "demo" | "personal";
 }
 
 export type ScenarioType =

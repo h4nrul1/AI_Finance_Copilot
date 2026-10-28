@@ -18,6 +18,10 @@ interface Props {
   scenario?: FinancialProjection;
 }
 
+function formatAxisDollars(value: number) {
+  return Math.abs(value) >= 1000 ? `$${Math.round(value / 100) / 10}k` : `$${Math.round(value)}`;
+}
+
 export function CashFlowChart({ baseline, scenario }: Props) {
   const data = baseline.timeline.map((point, index) => ({
     date: point.label,
@@ -41,7 +45,7 @@ export function CashFlowChart({ baseline, scenario }: Props) {
           </defs>
           <CartesianGrid stroke="#dfe4dc" strokeDasharray="3 3" />
           <XAxis dataKey="date" tickLine={false} axisLine={false} />
-          <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `$${Number(value) / 1000}k`} />
+          <YAxis tickLine={false} axisLine={false} allowDecimals={false} tickFormatter={formatAxisDollars} />
           <Tooltip
             formatter={(value: number) => formatCurrency(value)}
             contentStyle={{ borderRadius: 8, border: "1px solid #dfe4dc" }}

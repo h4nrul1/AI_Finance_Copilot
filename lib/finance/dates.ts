@@ -4,6 +4,12 @@ export function asDate(value: string) {
   return new Date(`${value}T12:00:00`);
 }
 
+/** Today's date in the user's own time zone, as YYYY-MM-DD. */
+export function localToday(now = new Date()) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export function toISODate(date: Date) {
   return date.toISOString().slice(0, 10);
 }

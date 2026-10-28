@@ -26,10 +26,6 @@ export interface CopilotAnswer {
 const MAX_TOOL_ROUNDS = 4;
 const OPENAI_TIMEOUT_MS = 20_000;
 
-function firstName(state: FinanceState) {
-  return state.student.name.split(" ")[0] || "you";
-}
-
 function toAnswer(message: string, mode: CopilotAnswer["mode"], executions: ToolExecution[]): CopilotAnswer {
   return {
     message,
@@ -127,10 +123,9 @@ export function detectIntent(message: string, state: FinanceState): Intent {
 
 function educationAnswer(message: string, state: FinanceState) {
   const lower = message.toLowerCase();
-  const name = firstName(state);
 
   if (lower.includes("etf")) {
-    return `An ETF, or exchange-traded fund, is a basket of investments you can buy as one fund. A broad ETF can hold pieces of many companies, which is why people use ETFs to learn about diversification. For ${name}, the key question is liquidity: money invested for the long term should not be money needed for rent or tuition this semester.`;
+    return `An ETF, or exchange-traded fund, is a basket of investments you can buy as one fund. A broad ETF can hold pieces of many companies, which is why people use ETFs to learn about diversification. For you, the key question is liquidity: money invested for the long term should not be money needed for rent or tuition this semester.`;
   }
   if (lower.includes("apr") || lower.includes("interest")) {
     return `APR means annual percentage rate. It is the yearly cost of borrowing money, including interest and some fees. For a credit card, carrying a balance can get expensive quickly because interest may be charged every billing cycle. A good student rule is to pay the full statement balance whenever possible.`;
@@ -145,7 +140,7 @@ function educationAnswer(message: string, state: FinanceState) {
     return `A financial aid offer usually mixes free aid (grants and scholarships), borrowed aid (loans), and work-study, which you only receive by working. Only the free aid actually lowers your cost; loans have to be repaid later, so treat them as borrowed money rather than income.`;
   }
   if (lower.includes("emergency")) {
-    return `An emergency fund is money kept available for unexpected expenses, like a medical bill or car repair. ${name}'s plan protects a ${formatCurrency(state.cash.targetEndingBuffer)} semester-end buffer, which works like a small emergency cushion.`;
+    return `An emergency fund is money kept available for unexpected expenses, like a medical bill or car repair. Your plan protects a ${formatCurrency(state.cash.targetEndingBuffer)} semester-end buffer, which works like a small emergency cushion.`;
   }
   if (lower.includes("divers")) {
     return `Diversification means not putting all your money into one investment, so one company or sector doing poorly hurts less. For students it also means diversifying across time: keep near-term bill money in cash and treat investing as longer-term money.`;
@@ -180,7 +175,7 @@ function describeExecution(execution: ToolExecution, state: FinanceState) {
           ? `Nothing stays fully comfortable right now, but up to ${formatCurrency(detail.result.tightMax)} still fits without going below your goal.`
           : "Any extra purchase would put you below your semester goal right now.";
     case "snapshot":
-      return `${firstName(state)} can safely spend about ${formatCurrency(detail.breakdown.safeWeeklySpending)}/week on flexible items for the next ${detail.breakdown.weeksRemaining.toFixed(
+      return `You can safely spend about ${formatCurrency(detail.breakdown.safeWeeklySpending)}/week on flexible items for the next ${detail.breakdown.weeksRemaining.toFixed(
         1
       )} weeks while protecting a ${formatCurrency(detail.breakdown.targetEndingBuffer)} goal. Projected semester-end cash is ${formatCurrency(detail.projectedEndingCash)} (${detail.semesterHealth}).`;
     default:

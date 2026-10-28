@@ -24,7 +24,7 @@ export function buildStudentContext(state: FinanceState) {
   const expenses = state.expenses.map((expense) => `${expense.name} (${expense.recurring ? expense.frequency ?? "monthly" : "one-time"}, ${expense.required ? "required" : "flexible"})`);
 
   return [
-    `Student: ${state.student.name}, ${state.student.year} at ${state.student.school}.`,
+    `Student: ${[state.student.name, state.student.year, state.student.school && `at ${state.student.school}`].filter(Boolean).join(", ") || "not provided"}.`,
     `Semester: ${state.semester.name}. Today is ${state.semester.currentDate}; the semester ends ${state.semester.endDate}.`,
     `Income sources: ${incomes.join("; ") || "none"}.`,
     `Planned expenses: ${expenses.join("; ") || "none"}.`

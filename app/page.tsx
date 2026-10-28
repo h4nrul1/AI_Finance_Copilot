@@ -14,6 +14,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export default function OverviewPage() {
   const { state, projection } = useFinance();
   const upcomingExpense = projection.upcomingEvents.find((event) => event.kind === "expense" && event.required);
+  const firstName = state.student.name.trim().split(" ")[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const healthTone = projection.semesterHealth === "On Track" ? "good" : projection.semesterHealth === "Tight" ? "warn" : "bad";
 
   return (
@@ -21,7 +24,7 @@ export default function OverviewPage() {
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">{state.semester.name}</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-normal text-ink">Good morning, {state.student.name.split(" ")[0]}.</h1>
+          <h1 className="mt-2 text-3xl font-semibold tracking-normal text-ink">{greeting}{firstName ? `, ${firstName}` : ""}.</h1>
           <p className="mt-2 max-w-2xl text-muted">
             A semester-first view of what you can afford from now through finals.
           </p>
@@ -67,7 +70,7 @@ export default function OverviewPage() {
             <div className="flex items-start gap-3">
               <TrendingUp className="mt-1 text-sage" size={20} />
               <p className="text-sm leading-6 text-muted">
-                At the current spending rate, {state.student.name.split(" ")[0]} is projected to finish with{" "}
+                At the current spending rate, you&apos;re projected to finish with{" "}
                 <strong className="text-ink">{formatCurrency(projection.projectedEndingBalance)}</strong> available.
               </p>
             </div>

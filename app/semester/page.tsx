@@ -56,6 +56,27 @@ export default function SemesterPage() {
         </p>
       </header>
 
+      {state.mode === "personal" && state.incomes.length === 0 && state.expenses.length === 0 ? (
+        <Card className="border-moss/40">
+          <CardHeader title="Set up your plan" eyebrow="Getting started" />
+          <ol className="grid gap-2 text-sm leading-6 text-ink sm:grid-cols-2">
+            <li>
+              <strong>1. Check your semester dates</strong> below. We guessed them from today&apos;s date.
+            </li>
+            <li>
+              <strong>2. Enter your checking balance</strong> under Available Money.
+            </li>
+            <li>
+              <strong>3. Add your income:</strong> paychecks, family support, scholarship or aid refunds.
+            </li>
+            <li>
+              <strong>4. Add your expenses</strong> and tick <em>Required</em> for rent, tuition, and bills.
+            </li>
+          </ol>
+          <p className="mt-3 text-sm text-muted">Then set your semester goal at the bottom and head to Overview to see your weekly budget.</p>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader title="How your weekly budget is built" eyebrow="Rest of the semester" />
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
@@ -71,8 +92,10 @@ export default function SemesterPage() {
           />
         </div>
         <p className="mt-3 text-sm text-muted">
-          {formatCurrency(safeWeekly.availableForDiscretionary)} is left for extra spending after everything planned and your goal. Savings (
-          {formatCurrency(state.cash.savings)}) is not counted.
+          {safeWeekly.availableForDiscretionary >= 0
+            ? `${formatCurrency(safeWeekly.availableForDiscretionary)} is left for extra spending after everything planned and your goal.`
+            : `You're ${formatCurrency(-safeWeekly.availableForDiscretionary)} short of your goal after everything planned, so there's no room for extra spending yet.`}{" "}
+          Savings ({formatCurrency(state.cash.savings)}) is not counted.
         </p>
       </Card>
 
