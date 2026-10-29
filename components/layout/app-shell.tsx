@@ -13,6 +13,7 @@ import {
   ReceiptText,
   RotateCcw,
   Settings2,
+  TrendingUp,
   UserRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ const nav = [
   { href: "/semester", label: "Semester Plan", icon: Settings2 },
   { href: "/spending", label: "Spending", icon: ReceiptText },
   { href: "/scenarios", label: "Scenario Lab", icon: LineChart },
+  { href: "/invest", label: "Investing", icon: TrendingUp },
   { href: "/copilot", label: "Copilot", icon: Bot },
   { href: "/account", label: "Account", icon: UserRound }
 ];

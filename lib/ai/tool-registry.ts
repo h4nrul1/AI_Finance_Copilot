@@ -1,6 +1,6 @@
 import type { FinanceState, MaxAffordableResult, SafeWeeklyBreakdown, Scenario, ScenarioSummary } from "@/types/finance";
 import { buildProjection } from "@/lib/finance/engine";
-import { compareScenarioToBaseline, findMaxAffordable, getSpendingByCategory, summarizeScenarioResult } from "@/lib/finance/tools";
+import { compareScenarioToBaseline, findMaxAffordable, getSpendingByCategory, ScenarioInputError, summarizeScenarioResult } from "@/lib/finance/tools";
 
 export interface ToolDefinition {
   type: "function";
@@ -103,7 +103,7 @@ export function buildToolDefinitions(state: FinanceState): ToolDefinition[] {
         parameters: {
           type: "object",
           properties: {
-            name: { type: "string", description: "Short label, e.g. 'Chicago trip'." },
+            name: { type: "string", description: "Short label, e.g. 'New laptop'." },
             amount: { type: "number", description: "Cost in dollars." },
             date: dateParam
           },
@@ -277,7 +277,7 @@ export function executeTool(state: FinanceState, name: string, args: Record<stri
   try {
     return { name, input: args, ok: true, ...dispatch(state, name, args) };
   } catch (error) {
-    const message = error instanceof ToolInputError ? error.message : "The calculation failed.";
+    const message = error instanceof ToolInputError || error instanceof ScenarioInputError ? error.message : "The calculation failed.";
     return { name, input: args, ok: false, output: { error: message } };
   }
 }

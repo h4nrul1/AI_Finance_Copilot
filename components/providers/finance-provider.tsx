@@ -7,7 +7,7 @@ import { withToday } from "@/lib/data/blank-plan";
 import { demoState } from "@/lib/data/seed";
 import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
-import { applyScenario } from "@/lib/finance/tools";
+import { applyScenario, scenarioInputProblem } from "@/lib/finance/tools";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { choosePlanOnLogin, deleteAccountPlan, loadAccountPlan, saveAccountPlan, shouldSaveToAccount } from "@/lib/supabase/plan-store";
 
@@ -234,7 +234,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setState((current) => ({ ...current, transactions: upsert(current.transactions, transaction) })),
       deleteTransaction: (id) =>
         setState((current) => ({ ...current, transactions: current.transactions.filter((transaction) => transaction.id !== id) })),
-      applyScenarioToPlan: (scenario) => setState((current) => applyScenario(current, scenario))
+      applyScenarioToPlan: (scenario) => {
+        if (scenarioInputProblem(state, scenario)) return;
+        setState((current) => scenarioInputProblem(current, scenario) ? current : applyScenario(current, scenario));
+      }
     }),
     [projection, state, status, supabase, user, saveStatus]
   );
