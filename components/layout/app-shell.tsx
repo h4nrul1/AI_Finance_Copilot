@@ -9,7 +9,8 @@ import {
   LineChart,
   ReceiptText,
   RotateCcw,
-  Settings2
+  Settings2,
+  TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Welcome } from "@/components/onboarding/welcome";
@@ -21,6 +22,7 @@ const nav = [
   { href: "/semester", label: "Semester Plan", icon: Settings2 },
   { href: "/spending", label: "Spending", icon: ReceiptText },
   { href: "/scenarios", label: "Scenario Lab", icon: LineChart },
+  { href: "/invest", label: "Investing", icon: TrendingUp },
   { href: "/copilot", label: "Copilot", icon: Bot }
 ];
 
