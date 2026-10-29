@@ -31,6 +31,9 @@ interface FinanceContextValue {
   accountsEnabled: boolean;
   /** The signed-in student, or null for guests. */
   user: AccountUser | null;
+  /** True once a signed-out visitor chose "continue as a guest" in this tab; until then they see the login page. */
+  guestChosen: boolean;
+  continueAsGuest: () => void;
   /** Whether the latest change has reached the student's account. Always "idle" for guests. */
   saveStatus: SaveStatus;
   signOut: () => Promise<void>;
@@ -55,6 +58,8 @@ interface FinanceContextValue {
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
 const STORAGE_KEY = "ai-finance-copilot-demo-state";
+// Session storage, so every new visit to the site starts at the login page.
+const GUEST_CHOICE_KEY = "semesterfi-guest";
 const ACCOUNT_SAVE_DELAY_MS = 800;
 
 function upsert<T extends { id: string }>(items: T[], item: T) {
@@ -63,10 +68,12 @@ function upsert<T extends { id: string }>(items: T[], item: T) {
     : [...items, item];
 }
 
+/** Only a guest's own plan is kept between visits; the demo always starts fresh from the welcome screen. */
 function readGuestPlan(): FinanceState | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as FinanceState) : null;
+    const plan = raw ? (JSON.parse(raw) as FinanceState) : null;
+    return plan && shouldSaveToAccount(plan) ? plan : null;
   } catch {
     return null;
   }
@@ -77,6 +84,23 @@ function writeGuestPlan(plan: FinanceState) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
   } catch {
     // Storage can be unavailable (private mode, full quota); the plan still works for this session.
+  }
+}
+
+function readGuestChoice() {
+  try {
+    return window.sessionStorage.getItem(GUEST_CHOICE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeGuestChoice(chosen: boolean) {
+  try {
+    if (chosen) window.sessionStorage.setItem(GUEST_CHOICE_KEY, "1");
+    else window.sessionStorage.removeItem(GUEST_CHOICE_KEY);
+  } catch {
+    // Without session storage the visitor just sees the login page again next time.
   }
 }
 
@@ -93,6 +117,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<FinanceState>(demoState);
   const [status, setStatus] = useState<PlanStatus>("loading");
   const [user, setUser] = useState<AccountUser | null>(null);
+  const [guestChosen, setGuestChosen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   // The plan as last read from or written to the account, so loading a plan doesn't immediately re-save it.
   const lastSynced = useRef<string | null>(null);
@@ -100,6 +125,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const loadId = useRef(0);
 
   useEffect(() => {
+    setGuestChosen(readGuestChoice());
+
     function loadGuest() {
       setUser(null);
       setSaveStatus("idle");
@@ -150,10 +177,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     // Supabase recommends not awaiting other Supabase calls inside this callback, so the work is deferred.
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        // Marked right away (not deferred) so the login gate never bounces a student who just logged in.
+        if (session) setStatus("loading");
         setTimeout(() => (session ? enterAccount(session) : loadGuest()), 0);
       } else if (event === "SIGNED_OUT") {
         loadId.current += 1;
         lastSynced.current = null;
+        writeGuestChoice(false);
+        setGuestChosen(false);
         setTimeout(loadGuest, 0);
       }
     });
@@ -164,7 +195,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (status !== "ready") return;
     if (!user) {
-      writeGuestPlan(state);
+      if (shouldSaveToAccount(state)) writeGuestPlan(state);
       return;
     }
     if (!supabase || !shouldSaveToAccount(state)) return;
@@ -194,6 +225,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       projection,
       accountsEnabled: supabase !== null,
       user,
+      guestChosen,
+      continueAsGuest: () => {
+        writeGuestChoice(true);
+        setGuestChosen(true);
+      },
       saveStatus,
       signOut: async () => {
         await supabase?.auth.signOut();
@@ -239,7 +275,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setState((current) => scenarioInputProblem(current, scenario) ? current : applyScenario(current, scenario));
       }
     }),
-    [projection, state, status, supabase, user, saveStatus]
+    [projection, state, status, supabase, user, guestChosen, saveStatus]
   );
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;

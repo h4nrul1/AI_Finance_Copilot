@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AuthCard, FormMessage, friendlyAuthError, MIN_PASSWORD_LENGTH } from "@/components/auth/auth-card";
+import { AuthCard, ContinueAsGuest, FormMessage, friendlyAuthError, MIN_PASSWORD_LENGTH } from "@/components/auth/auth-card";
 import { useFinance } from "@/components/providers/finance-provider";
 import { Button } from "@/components/ui/button";
 import { Input, Label, PasswordInput } from "@/components/ui/input";
@@ -57,7 +57,7 @@ export default function SignupPage() {
       subtitle={bringsGuestPlan ? "Your current plan will be saved to your account." : "Save your plan and use it on any device."}
       footer={
         <>
-          Already have an account? <Link href="/login" className="font-semibold text-moss underline">Log in</Link>
+          Already have an account? <Link href="/login" className="font-semibold text-moss underline">Log in</Link> or <ContinueAsGuest />.
         </>
       }
     >

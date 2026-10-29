@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Bot,
@@ -36,15 +37,22 @@ const FULL_PAGE_PATHS = ["/setup", "/login", "/signup", "/forgot-password", "/au
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { state, status, startOver, user, accountsEnabled, signOut } = useFinance();
+  const router = useRouter();
+  const { state, status, startOver, user, accountsEnabled, guestChosen, signOut } = useFinance();
   const isDemo = state.mode !== "personal";
   const semesterOver = !isDemo && state.semester.currentDate > state.semester.endDate;
   const fullPage = FULL_PAGE_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  // Signed-out visitors start at the login page until they log in or choose to continue as a guest.
+  const needsLogin = accountsEnabled && status !== "loading" && !user && !guestChosen && !fullPage;
+
+  useEffect(() => {
+    if (needsLogin) router.replace("/login");
+  }, [needsLogin, router]);
 
   // Login and setup screens render on their own, even while the plan loads.
   if (fullPage) return <>{children}</>;
   // Nothing to show until the plan is read; avoids flashing demo numbers at a returning student.
-  if (status === "loading") return <div className="min-h-screen" />;
+  if (status === "loading" || needsLogin) return <div className="min-h-screen" />;
   if (status === "error") return <PlanLoadError onSignOut={signOut} />;
   if (status === "needs-setup") return <Welcome />;
 

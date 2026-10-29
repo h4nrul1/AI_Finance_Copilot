@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GraduationCap } from "lucide-react";
 import { useFinance } from "@/components/providers/finance-provider";
 
@@ -33,6 +34,25 @@ export function AuthCard({ title, subtitle, children, footer }: { title: string;
         {footer ? <div className="mt-4 text-center text-sm text-muted">{footer}</div> : null}
       </div>
     </div>
+  );
+}
+
+/** Lets a visitor skip the account and use SemesterFi with a plan saved in this browser. */
+export function ContinueAsGuest() {
+  const { continueAsGuest } = useFinance();
+  const router = useRouter();
+
+  return (
+    <button
+      type="button"
+      className="underline hover:text-ink"
+      onClick={() => {
+        continueAsGuest();
+        router.push("/");
+      }}
+    >
+      continue as a guest
+    </button>
   );
 }
 

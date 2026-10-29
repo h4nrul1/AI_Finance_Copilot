@@ -1,7 +1,7 @@
 import type { FinanceState, VerdictSettings } from "@/types/finance";
 
-/** Comfortable while the weekly budget drops 25% or less; tight up to 100% (ending exactly at the goal). */
-export const DEFAULT_VERDICT_SETTINGS: VerdictSettings = { comfortableDropLimit: 0.25, tightDropLimit: 1 };
+/** Comfortable while the weekly budget drops 25% or less; tight up to 75%; Not recommended beyond that. */
+export const DEFAULT_VERDICT_SETTINGS: VerdictSettings = { comfortableDropLimit: 0.25, tightDropLimit: 0.75 };
 
 /** Thresholds are whole percents: comfortable 1-99, tight above comfortable and at most 100. */
 export const THRESHOLD_BOUNDS = { min: 1, max: 100 };
@@ -35,6 +35,6 @@ export function getVerdictSettings(state: FinanceState): VerdictSettings {
   if (!saved) return DEFAULT_VERDICT_SETTINGS;
   if (isValid(saved)) return { comfortableDropLimit: saved.comfortableDropLimit, tightDropLimit: saved.tightDropLimit };
 
-  const legacy = { comfortableDropLimit: saved.weeklyDropLimit, tightDropLimit: 1 };
+  const legacy = { comfortableDropLimit: saved.weeklyDropLimit, tightDropLimit: DEFAULT_VERDICT_SETTINGS.tightDropLimit };
   return isValid(legacy) ? legacy : DEFAULT_VERDICT_SETTINGS;
 }

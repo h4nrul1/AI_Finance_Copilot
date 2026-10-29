@@ -46,7 +46,7 @@ How a copilot question is answered:
 
 1. `lib/ai/tool-registry.ts` describes the finance tools to the model as function definitions (built from the student's own plan, so income and expense names are real enums).
 2. The model picks a tool and fills in arguments. The registry validates them (positive amounts, dates inside the semester, known names) and returns errors to the model so it can retry or ask a follow-up question.
-3. The deterministic engine runs the scenario. `lib/finance/verdict.ts` grades it as **Comfortable**, **Fits, but tight**, or **Not recommended** and says which rule decided it. Overdrafts and ending below the goal are always "Not recommended". Otherwise the verdict depends on how much the decision cuts the safe weekly budget, compared with two thresholds the student sets (`lib/finance/verdict-settings.ts`; default: Comfortable up to a 25% cut, Fits but tight up to 100%).
+3. The deterministic engine runs the scenario. `lib/finance/verdict.ts` grades it as **Comfortable**, **Fits, but tight**, or **Not recommended** and says which rule decided it. Overdrafts and ending below the goal are always "Not recommended". Otherwise the verdict depends on how much the decision cuts the safe weekly budget, compared with two thresholds the student sets (`lib/finance/verdict-settings.ts`; default: Comfortable up to a 25% cut, Fits but tight up to 75%, Not recommended above that).
 4. The model explains the result. The UI shows the engine's verdict card and a "Show calculation" table, so the numbers on screen never come from the model.
 
 Without an API key, a keyword-based fallback calls the same tools, so the demo behaves the same offline.
