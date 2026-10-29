@@ -3,14 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AlertTriangle,
   Bot,
+  Cloud,
+  CloudOff,
   GraduationCap,
   LayoutDashboard,
   LineChart,
   ReceiptText,
   RotateCcw,
   Settings2,
-  TrendingUp
+  TrendingUp,
+  UserRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Welcome } from "@/components/onboarding/welcome";
@@ -23,26 +27,36 @@ const nav = [
   { href: "/spending", label: "Spending", icon: ReceiptText },
   { href: "/scenarios", label: "Scenario Lab", icon: LineChart },
   { href: "/invest", label: "Investing", icon: TrendingUp },
-  { href: "/copilot", label: "Copilot", icon: Bot }
+  { href: "/copilot", label: "Copilot", icon: Bot },
+  { href: "/account", label: "Account", icon: UserRound }
 ];
+
+/** Pages shown full-screen, without the sidebar and before any plan exists. */
+const FULL_PAGE_PATHS = ["/setup", "/login", "/signup", "/forgot-password", "/auth"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { state, status, startOver } = useFinance();
+  const { state, status, startOver, user, accountsEnabled, signOut } = useFinance();
   const isDemo = state.mode !== "personal";
   const semesterOver = !isDemo && state.semester.currentDate > state.semester.endDate;
+  const fullPage = FULL_PAGE_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
-  // Nothing to show until the saved plan is read; avoids flashing demo numbers at a returning student.
+  // Login and setup screens render on their own, even while the plan loads.
+  if (fullPage) return <>{children}</>;
+  // Nothing to show until the plan is read; avoids flashing demo numbers at a returning student.
   if (status === "loading") return <div className="min-h-screen" />;
-  // Setup is a focused, full-page flow without the sidebar.
-  if (pathname.startsWith("/setup")) return <>{children}</>;
+  if (status === "error") return <PlanLoadError onSignOut={signOut} />;
   if (status === "needs-setup") return <Welcome />;
 
   function confirmStartOver() {
     const message = isDemo
       ? "Leave the demo and go back to the start screen?"
-      : "Start over? This deletes your plan from this browser and can't be undone.";
-    if (window.confirm(message)) startOver();
+      : user
+        ? "Start over? This deletes the plan saved in your account and can't be undone."
+        : "Start over? This deletes your plan from this browser and can't be undone.";
+    if (window.confirm(message)) {
+      startOver().catch(() => window.alert("Couldn't delete your plan. Check your connection and try again."));
+    }
   }
 
   return (
@@ -90,6 +104,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isDemo ? "Leave demo" : "Start over"}
           </Button>
         </div>
+
+        {accountsEnabled ? <AccountStatus /> : null}
       </aside>
 
       <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
@@ -104,6 +120,70 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ) : null}
         {children}
       </main>
+    </div>
+  );
+}
+
+function AccountStatus() {
+  const { user, state, saveStatus } = useFinance();
+
+  if (!user) {
+    return (
+      <div className="mt-3 hidden rounded-lg border border-line bg-white p-4 lg:block">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Guest</p>
+        <p className="mt-1 text-sm text-ink">Saved in this browser only.</p>
+        <div className="mt-3 flex gap-2">
+          <Link href="/signup" className="flex-1">
+            <Button size="sm" className="w-full">
+              Sign up
+            </Button>
+          </Link>
+          <Link href="/login" className="flex-1">
+            <Button size="sm" variant="secondary" className="w-full">
+              Log in
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const saving =
+    state.mode !== "personal"
+      ? { icon: CloudOff, text: "Demo isn't saved to your account" }
+      : saveStatus === "saving"
+        ? { icon: Cloud, text: "Saving..." }
+        : saveStatus === "error"
+          ? { icon: CloudOff, text: "Couldn't save. Check your connection." }
+          : { icon: Cloud, text: "Saved to your account" };
+  const Icon = saving.icon;
+
+  return (
+    <Link href="/account" className="mt-3 hidden rounded-lg border border-line bg-white p-4 transition hover:border-moss lg:block">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Signed in</p>
+      <p className="mt-1 truncate text-sm font-medium text-ink">{user.email}</p>
+      <p className={cn("mt-1 flex items-center gap-1.5 text-xs", saveStatus === "error" ? "text-coral" : "text-muted")}>
+        <Icon size={13} />
+        {saving.text}
+      </p>
+    </Link>
+  );
+}
+
+function PlanLoadError({ onSignOut }: { onSignOut: () => Promise<void> }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="max-w-md rounded-lg border border-line bg-white p-6 text-center shadow-soft">
+        <AlertTriangle className="mx-auto text-coral" size={28} />
+        <h1 className="mt-3 text-xl font-semibold text-ink">We couldn&apos;t load your plan</h1>
+        <p className="mt-2 text-sm text-muted">Your saved plan is safe. Check your connection and try again.</p>
+        <div className="mt-5 flex justify-center gap-3">
+          <Button onClick={() => window.location.reload()}>Try again</Button>
+          <Button variant="secondary" onClick={() => onSignOut()}>
+            Log out
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
