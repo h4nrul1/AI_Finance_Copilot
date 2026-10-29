@@ -10,7 +10,7 @@ import { Input, Label, NumberInput } from "@/components/ui/input";
 import { useFinance } from "@/components/providers/finance-provider";
 import { APPROACHES, OPTIONS, RISK_LABELS, RISK_TONES, type InvestingOption } from "@/lib/data/investing";
 import { compareScenarioToBaseline, summarizeScenarioResult } from "@/lib/finance/tools";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 export default function InvestPage() {
   const [approachId, setApproachId] = useState(APPROACHES[0].id);
@@ -38,15 +38,14 @@ export default function InvestPage() {
 
       <Card>
         <CardHeader title="1. How long can you leave the money?" eyebrow="Choose an approach" />
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="tablist">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label="Investing time horizon">
           {APPROACHES.map((item) => {
             const active = item.id === approach.id;
             return (
               <button
                 key={item.id}
                 type="button"
-                role="tab"
-                aria-selected={active}
+                aria-pressed={active}
                 onClick={() => setApproachId(item.id)}
                 className={cn(
                   "rounded-lg border p-3 text-left transition",
@@ -228,7 +227,9 @@ function PlanImpactCard() {
           <VerdictCard verdict={result.verdict} summary={summarizeScenarioResult(state, result)} />
         </div>
       ) : (
-        <p className="mt-4 text-sm text-coral">Enter a positive amount and a date inside the semester ({state.semester.currentDate} to {state.semester.endDate}).</p>
+        <p className="mt-4 text-sm text-coral">
+          Enter a positive amount and a date inside the semester ({formatDate(state.semester.currentDate)} to {formatDate(state.semester.endDate)}).
+        </p>
       )}
     </Card>
   );
