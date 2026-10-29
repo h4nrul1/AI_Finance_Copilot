@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthCard, FormMessage, friendlyAuthError, MIN_PASSWORD_LENGTH } from "@/components/auth/auth-card";
 import { useFinance } from "@/components/providers/finance-provider";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, PasswordInput } from "@/components/ui/input";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 /** Reached from the password-reset email; the link has already signed the student in. */
@@ -39,12 +39,12 @@ export default function ResetPasswordPage() {
         <form className="space-y-4" onSubmit={submit}>
           <div>
             <Label htmlFor="reset-password">New password</Label>
-            <Input id="reset-password" type="password" autoComplete="new-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <PasswordInput id="reset-password" autoComplete="new-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
             <p className="mt-1 text-xs text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
           </div>
           <div>
             <Label htmlFor="reset-confirm">Confirm new password</Label>
-            <Input id="reset-confirm" type="password" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} />
+            <PasswordInput id="reset-confirm" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} />
           </div>
           {error ? <FormMessage tone="error">{error}</FormMessage> : null}
           <Button type="submit" className="w-full" disabled={busy}>

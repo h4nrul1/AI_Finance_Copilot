@@ -7,7 +7,7 @@ import { FormMessage, friendlyAuthError, MIN_PASSWORD_LENGTH } from "@/component
 import { useFinance } from "@/components/providers/finance-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, PasswordInput } from "@/components/ui/input";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 export default function AccountPage() {
@@ -89,7 +89,7 @@ function ChangePasswordCard() {
       <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
         <div className="min-w-[220px] flex-1">
           <Label htmlFor="new-password">New password</Label>
-          <Input id="new-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <PasswordInput id="new-password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </div>
         <Button type="submit" disabled={busy || !password}>
           {busy ? "Saving..." : "Update password"}

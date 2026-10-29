@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthCard, FormMessage, friendlyAuthError } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, PasswordInput } from "@/components/ui/input";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 export default function LoginPage() {
@@ -62,7 +62,7 @@ function LoginForm() {
               Forgot password?
             </Link>
           </div>
-          <Input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+          <PasswordInput id="login-password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
         </div>
         {linkExpired && !error ? (
           <FormMessage tone="info">That email link has expired or was already used. Log in, or request a new reset link.</FormMessage>
