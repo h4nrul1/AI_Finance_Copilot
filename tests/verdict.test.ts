@@ -71,9 +71,9 @@ describe("spending limits", () => {
   it("finds the largest comfortable and tight purchase amounts", () => {
     const result = findMaxAffordable(demoState, "2026-11-28");
 
-    // Comfortable ends once weekly spending drops 25%; tight ends once you'd finish below the $1,000 goal.
+    // Comfortable ends once weekly spending drops 25%; tight ends once it drops 75%.
     expect(result.comfortableMax).toBe(653);
-    expect(result.tightMax).toBe(2615);
+    expect(result.tightMax).toBe(1961);
     expect(compareScenarioToBaseline(demoState, purchase(result.comfortableMax, "2026-11-28")).verdict.level).toBe("comfortable");
     expect(compareScenarioToBaseline(demoState, purchase(result.comfortableMax + 1, "2026-11-28")).verdict.level).toBe("tight");
     expect(compareScenarioToBaseline(demoState, purchase(result.tightMax + 1, "2026-11-28")).verdict.level).toBe("not-recommended");
@@ -92,9 +92,9 @@ describe("verdict thresholds", () => {
     verdictSettings: { comfortableDropLimit: comfortable, tightDropLimit: tight }
   });
 
-  it("defaults to comfortable up to a 25% weekly cut and tight up to 100%", () => {
+  it("defaults to comfortable up to a 25% weekly cut and tight up to 75%", () => {
     expect(getVerdictSettings(demoState)).toEqual(DEFAULT_VERDICT_SETTINGS);
-    expect(DEFAULT_VERDICT_SETTINGS).toEqual({ comfortableDropLimit: 0.25, tightDropLimit: 1 });
+    expect(DEFAULT_VERDICT_SETTINGS).toEqual({ comfortableDropLimit: 0.25, tightDropLimit: 0.75 });
   });
 
   it("uses the student's two thresholds to split the three verdicts", () => {
@@ -135,7 +135,7 @@ describe("verdict thresholds", () => {
     expect(getVerdictSettings(withThresholds(0.6, 0.4))).toEqual(DEFAULT_VERDICT_SETTINGS);
 
     const legacy = { ...demoState, verdictSettings: { preset: "cautious", comfortMargin: 1000, weeklyDropLimit: 0.15 } as never };
-    expect(getVerdictSettings(legacy)).toEqual({ comfortableDropLimit: 0.15, tightDropLimit: 1 });
+    expect(getVerdictSettings(legacy)).toEqual({ comfortableDropLimit: 0.15, tightDropLimit: 0.75 });
   });
 
   it("keeps the semester health badge independent of the thresholds", () => {

@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AuthCard, FormMessage, friendlyAuthError } from "@/components/auth/auth-card";
+import { AuthCard, ContinueAsGuest, FormMessage, friendlyAuthError } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, PasswordInput } from "@/components/ui/input";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -46,7 +46,7 @@ function LoginForm() {
       footer={
         <>
           New here? <Link href="/signup" className="font-semibold text-moss underline">Create an account</Link> or{" "}
-          <Link href="/" className="underline">continue as a guest</Link>.
+          <ContinueAsGuest />.
         </>
       }
     >
