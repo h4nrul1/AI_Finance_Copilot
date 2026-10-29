@@ -10,7 +10,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { useFinance } from "@/components/providers/finance-provider";
 import { addDays, asDate, toISODate } from "@/lib/finance/dates";
-import { compareScenarioToBaseline, summarizeScenarioResult } from "@/lib/finance/tools";
+import { compareScenarioToBaseline, ScenarioInputError, scenarioInputProblem, summarizeScenarioResult } from "@/lib/finance/tools";
 import type { FinanceState, Scenario, ScenarioResult, ScenarioType } from "@/types/finance";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -85,6 +85,7 @@ export default function ScenariosPage() {
   });
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
+  const [inputError, setInputError] = useState<string | null>(null);
 
   const example = useMemo(
     () =>
@@ -103,16 +104,29 @@ export default function ScenariosPage() {
   const update = (patch: Partial<Draft>) => {
     setDraft((current) => ({ ...current, ...patch }));
     setApplied(null);
+    setInputError(null);
   };
 
   function run() {
     if (!scenario) return;
-    setResult(compareScenarioToBaseline(state, scenario));
+    try {
+      setResult(compareScenarioToBaseline(state, scenario));
+      setInputError(null);
+    } catch (error) {
+      if (!(error instanceof ScenarioInputError)) throw error;
+      setInputError(error.message);
+      setResult(null);
+    }
     setApplied(null);
   }
 
   function apply() {
     if (!result) return;
+    const problem = scenarioInputProblem(state, result.scenario);
+    if (problem) {
+      setInputError(problem);
+      return;
+    }
     applyScenarioToPlan(result.scenario);
     setApplied(applyDescription(result.scenario));
     setResult(null);
@@ -242,6 +256,8 @@ export default function ScenariosPage() {
           </Button>
         </div>
       </Card>
+
+      {inputError ? <p role="alert" className="text-sm text-ink">{inputError}</p> : null}
 
       {applied ? (
         <div className="flex items-start gap-3 rounded-lg border border-sage/50 bg-sage/10 p-4 text-sm text-ink">
