@@ -13,6 +13,34 @@ import { assessScenario } from "./verdict";
 import { getVerdictSettings } from "./verdict-settings";
 import { formatDate } from "@/lib/utils";
 
+export function matchesName(itemName: string, query: string) {
+  const trimmed = query.trim();
+  return trimmed.length > 0 && itemName.toLowerCase().includes(trimmed.toLowerCase());
+}
+
+export class ScenarioInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScenarioInputError";
+  }
+}
+
+export function scenarioInputProblem(state: FinanceState, scenario: Scenario): string | null {
+  if (scenario.type === "income-loss") {
+    if (!scenario.incomeName?.trim()) return "Choose a recurring income source to stop.";
+    if (!state.incomes.some((income) => income.recurring && matchesName(income.name, scenario.incomeName!))) {
+      return `No recurring income matches "${scenario.incomeName.trim()}".`;
+    }
+  }
+  if (scenario.type === "expense-change") {
+    if (!scenario.expenseName?.trim()) return "Choose a recurring expense to change.";
+    if (!state.expenses.some((expense) => expense.recurring && matchesName(expense.name, scenario.expenseName!))) {
+      return `No recurring expense matches "${scenario.expenseName.trim()}".`;
+    }
+  }
+  return null;
+}
+
 export function calculateSemesterProjection(state: FinanceState) {
   return buildProjection(state);
 }
@@ -42,8 +70,8 @@ export function simulatePurchase(state: FinanceState, amount: number, date: stri
 export function simulateIncomeLoss(state: FinanceState, incomeName: string, stopDate: string) {
   const next = cloneState(state);
   next.incomes = next.incomes.map((income) =>
-    income.name.toLowerCase().includes(incomeName.toLowerCase()) && income.recurring
-      ? { ...income, endDate: stopDate }
+    matchesName(income.name, incomeName) && income.recurring
+      ? { ...income, endDate: income.endDate && income.endDate < stopDate ? income.endDate : stopDate }
       : income
   );
   return next;
@@ -56,7 +84,7 @@ export function simulateIncomeLoss(state: FinanceState, incomeName: string, stop
 export function simulateRecurringExpenseChange(state: FinanceState, expenseName: string, amountDelta: number, startDate: string) {
   const next = cloneState(state);
   next.expenses = next.expenses.flatMap((expense) => {
-    if (!expense.recurring || !expense.name.toLowerCase().includes(expenseName.toLowerCase())) return [expense];
+    if (!expense.recurring || !matchesName(expense.name, expenseName)) return [expense];
 
     const frequency = expense.frequency ?? "monthly";
     const scheduleEnd = expense.endDate ?? next.semester.endDate;
@@ -94,12 +122,15 @@ export function getUpcomingExpenses(state: FinanceState) {
 }
 
 export function applyScenario(state: FinanceState, scenario: Scenario) {
+  const problem = scenarioInputProblem(state, scenario);
+  if (problem) throw new ScenarioInputError(problem);
+
   if (scenario.type === "income-loss") {
-    return simulateIncomeLoss(state, scenario.incomeName ?? "Part-time campus job", scenario.stopDate ?? scenario.date ?? state.semester.currentDate);
+    return simulateIncomeLoss(state, scenario.incomeName!, scenario.stopDate ?? scenario.date ?? state.semester.currentDate);
   }
 
   if (scenario.type === "expense-change") {
-    return simulateRecurringExpenseChange(state, scenario.expenseName ?? "Rent", scenario.amount ?? 0, scenario.date ?? state.semester.currentDate);
+    return simulateRecurringExpenseChange(state, scenario.expenseName!, scenario.amount ?? 0, scenario.date ?? state.semester.currentDate);
   }
 
   if (scenario.type === "investment") {

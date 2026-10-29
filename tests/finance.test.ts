@@ -3,7 +3,11 @@ import { demoState } from "@/lib/data/seed";
 import type { Scenario } from "@/types/finance";
 import { buildProjection, planItemTotals } from "@/lib/finance/engine";
 import {
+  applyScenario,
   compareScenarioToBaseline,
+  matchesName,
+  ScenarioInputError,
+  scenarioInputProblem,
   simulateIncomeLoss,
   simulatePurchase,
   simulateRecurringExpenseChange
@@ -38,6 +42,56 @@ describe("semester projection engine", () => {
 });
 
 describe("scenario tools", () => {
+  it.each(["income-loss", "expense-change"] as const)("rejects missing, blank, unknown and non-recurring names for %s", (type) => {
+    const field = type === "income-loss" ? "incomeName" : "expenseName";
+    const oneTimeName = type === "income-loss" ? "Family support" : "Tuition installment";
+    for (const name of [undefined, "", "  \t ", "Unknown item", oneTimeName]) {
+      const scenario: Scenario = { id: "invalid", name: "Invalid", description: "", type, [field]: name };
+      const before = structuredClone(demoState);
+      expect(scenarioInputProblem(demoState, scenario)).toEqual(expect.any(String));
+      expect(() => applyScenario(demoState, scenario)).toThrow(ScenarioInputError);
+      expect(() => compareScenarioToBaseline(demoState, scenario)).toThrow(ScenarioInputError);
+      expect(demoState).toEqual(before);
+    }
+  });
+
+  it("leaves a plan without Rent untouched when a rent change is requested", () => {
+    const state = { ...demoState, expenses: demoState.expenses.filter((expense) => expense.name !== "Rent") };
+    const before = structuredClone(state);
+    const scenario: Scenario = { id: "rent", name: "Rent change", description: "", type: "expense-change", expenseName: "Rent", amount: 100 };
+    expect(() => applyScenario(state, scenario)).toThrow(ScenarioInputError);
+    expect(simulateRecurringExpenseChange(state, "Rent", 100, "2026-10-01")).toEqual(before);
+    expect(state).toEqual(before);
+  });
+
+  it("never extends an income beyond its existing end date", () => {
+    const next = simulateIncomeLoss(demoState, "Part-time campus job", "2026-12-15");
+    expect(next.incomes).toEqual(demoState.incomes);
+    expect(next.incomes.find((income) => income.id === "income-job")?.endDate).toBe("2026-11-30");
+  });
+
+  it("sets a stop date for recurring income without an existing end date", () => {
+    const state = { ...demoState, incomes: demoState.incomes.map((income) => ({ ...income, endDate: undefined })) };
+    expect(simulateIncomeLoss(state, "campus job", "2026-10-01").incomes[0].endDate).toBe("2026-10-01");
+  });
+
+  it.each(["", " \t "])("a blank name %j never ends all incomes or changes all expenses", (name) => {
+    expect(simulateIncomeLoss(demoState, name, "2026-10-01")).toEqual(demoState);
+    expect(simulateRecurringExpenseChange(demoState, name, 100, "2026-10-01")).toEqual(demoState);
+  });
+
+  it("trims queries and matches partial names without case sensitivity", () => {
+    expect(matchesName("Part-time campus job", " CAMPUS ")).toBe(true);
+    expect(matchesName("Rent", " \t ")).toBe(false);
+    const income: Scenario = { id: "job", name: "Job stops", description: "", type: "income-loss", incomeName: " CAMPUS ", stopDate: "2026-10-01" };
+    const expense: Scenario = { id: "bill", name: "Bill changes", description: "", type: "expense-change", expenseName: " rEN ", amount: 100, date: "2026-10-01" };
+    expect(scenarioInputProblem(demoState, income)).toBeNull();
+    expect(applyScenario(demoState, income).incomes[0].endDate).toBe("2026-10-01");
+    expect(scenarioInputProblem(demoState, expense)).toBeNull();
+    expect(applyScenario(demoState, expense).expenses.find((item) => item.id === "expense-rent-changed")?.amount).toBe(850);
+    expect(scenarioInputProblem(demoState, chicagoTrip)).toBeNull();
+  });
+
   it("simulates a one-time purchase scenario", () => {
     const scenarioState = simulatePurchase(demoState, 500, "2026-11-12", "Trip");
     const result = buildProjection(scenarioState);
