@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { demoState } from "@/lib/data/seed";
 import { detectIntent, extractAmount, extractDate, mockCopilot, runOpenAICopilot } from "@/lib/ai/copilot";
 import { buildToolDefinitions, executeTool, type CopilotDetail } from "@/lib/ai/tool-registry";
+import * as financeTools from "@/lib/finance/tools";
 
 function scenarioOf(detail: CopilotDetail | undefined) {
   if (detail?.kind !== "scenario") throw new Error(`expected a scenario detail, got ${detail?.kind}`);
@@ -9,6 +10,19 @@ function scenarioOf(detail: CopilotDetail | undefined) {
 }
 
 describe("tool registry", () => {
+  it("returns scenario validation messages to the model as tool errors", () => {
+    const spy = vi.spyOn(financeTools, "compareScenarioToBaseline").mockImplementationOnce(() => {
+      throw new financeTools.ScenarioInputError("No recurring expense matches the selected bill.");
+    });
+    try {
+      const execution = executeTool(demoState, "simulate_recurring_expense_change", { expense_name: "Rent", amount_delta: 100, start_date: "2026-10-01" });
+      expect(execution.ok).toBe(false);
+      expect(execution.output).toEqual({ error: "No recurring expense matches the selected bill." });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("exposes the student's real income and expense names as enums", () => {
     const tools = buildToolDefinitions(demoState);
     const incomeTool = tools.find((tool) => tool.function.name === "simulate_income_loss");

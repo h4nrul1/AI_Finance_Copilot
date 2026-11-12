@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
@@ -52,6 +53,28 @@ export function NumberInput({ value, onValueChange, onBlur, ...props }: NumberIn
         onBlur?.(event);
       }}
     />
+  );
+}
+
+/** Password field with the standard eye button to show or hide what was typed. */
+export function PasswordInput({ className, ...props }: Omit<InputProps, "type">) {
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <div className="relative">
+      <Input {...props} type={visible ? "text" : "password"} className={cn("pr-10", className)} />
+      <button
+        type="button"
+        onClick={() => setVisible((value) => !value)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        title={visible ? "Hide password" : "Show password"}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-moss/30"
+      >
+        <Icon size={17} />
+      </button>
+    </div>
   );
 }
 

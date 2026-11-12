@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, GraduationCap, PlayCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { formatDate } from "@/lib/utils";
 
 /** First-visit screen: try the sample plan, or start a personal plan that uses today's date. */
 export function Welcome() {
-  const { startDemo, startPlan } = useFinance();
+  const { startDemo, startPlan, accountsEnabled, user } = useFinance();
   const router = useRouter();
   const [name, setName] = useState("");
   const today = localToday();
@@ -74,8 +75,21 @@ export function Welcome() {
           </section>
         </div>
 
-        <p className="mt-6 text-xs text-muted">
-          Your plan is saved only in this browser. Educational planning tool, not professional financial advice.
+        {accountsEnabled && !user ? (
+          <p className="mt-6 text-sm text-ink">
+            Already have an account?{" "}
+            <Link href="/login" className="font-semibold text-moss underline">
+              Log in
+            </Link>
+          </p>
+        ) : null}
+        <p className="mt-3 text-xs text-muted">
+          {user
+            ? `Signed in as ${user.email}. Your plan will be saved to your account.`
+            : accountsEnabled
+              ? "No account needed to try it: your plan is saved in this browser. Sign up any time to keep it across devices."
+              : "Your plan is saved only in this browser."}{" "}
+          Educational planning tool, not professional financial advice.
         </p>
       </div>
     </div>
