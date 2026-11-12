@@ -18,7 +18,7 @@ export function AuthCard({ title, subtitle, children, footer }: { title: string;
           </div>
           <p className="text-lg font-semibold text-ink">SemesterFi</p>
         </Link>
-        <div className="mt-6 rounded-lg border border-line bg-white p-6 shadow-soft">
+        <div className="mt-6 rounded-lg border border-line bg-panel p-6 shadow-soft">
           <h1 className="text-2xl font-semibold text-ink">{title}</h1>
           {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
           <div className="mt-5">

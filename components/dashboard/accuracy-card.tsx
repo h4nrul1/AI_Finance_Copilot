@@ -22,7 +22,7 @@ export function AccuracyCard() {
   ].filter((item) => item !== null);
 
   return (
-    <section className="rounded-lg border border-moss/30 bg-white p-5 shadow-soft">
+    <section className="rounded-lg border border-moss/30 bg-panel p-5 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Your plan works now</p>

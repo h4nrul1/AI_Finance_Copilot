@@ -8,6 +8,7 @@ import type {
   UpcomingEvent
 } from "@/types/finance";
 import { addDays, asDate, eachWeek, expandRecurringDates, toISODate, weeksBetween } from "./dates";
+import { budgetImpact, spendingSinceBalance, weekProgress } from "./spending";
 
 interface CashEvent {
   id: string;
@@ -99,8 +100,30 @@ export function listFutureEvents(state: FinanceState): CashEvent[] {
   return events.sort((a, b) => asDate(a.date).getTime() - asDate(b.date).getTime());
 }
 
-function summarizeSafeWeekly(state: FinanceState, events: CashEvent[]): SafeWeeklyBreakdown {
-  const currentCash = state.cash.checking;
+/** When checking was entered. Demo plans and plans from before this was tracked count it as of today. */
+function balanceDate(state: FinanceState) {
+  const { asOf } = state.cash;
+  return asOf && asOf < state.semester.currentDate ? asOf : state.semester.currentDate;
+}
+
+/** Planned income and expenses from the day checking was entered up to yesterday. They've happened since, so they're applied to it. */
+function eventsSinceBalance(state: FinanceState) {
+  const since = balanceDate(state);
+  if (since >= state.semester.currentDate) return { income: 0, expenses: 0 };
+  const yesterday = toISODate(addDays(asDate(state.semester.currentDate), -1));
+  const events = [
+    ...state.incomes.flatMap((income) => incomeEvents(income, since, yesterday)),
+    ...state.expenses.flatMap((expense) => expenseEvents(expense, since, yesterday))
+  ];
+  const total = (kind: CashEvent["kind"]) =>
+    Math.abs(events.filter((event) => event.kind === kind).reduce((sum, event) => sum + event.amount, 0));
+  return { income: total("income"), expenses: total("expense") };
+}
+
+function summarizeSafeWeekly(state: FinanceState, events: CashEvent[], impact: Map<string, number>): SafeWeeklyBreakdown {
+  const loggedSpending = spendingSinceBalance(state, impact);
+  const since = eventsSinceBalance(state);
+  const currentCash = state.cash.checking + since.income - since.expenses - loggedSpending;
   const expectedRemainingIncome = events
     .filter((event) => event.kind === "income")
     .reduce((sum, event) => sum + event.amount, 0);
@@ -116,6 +139,11 @@ function summarizeSafeWeekly(state: FinanceState, events: CashEvent[]): SafeWeek
     currentCash + expectedRemainingIncome - requiredRemainingExpenses - targetEndingBuffer - discretionaryAlreadyPlanned;
 
   return {
+    enteredCash: state.cash.checking,
+    balanceDate: balanceDate(state),
+    incomeSinceBalance: since.income,
+    expensesSinceBalance: since.expenses,
+    loggedSpending,
     currentCash,
     expectedRemainingIncome,
     requiredRemainingExpenses,
@@ -127,9 +155,9 @@ function summarizeSafeWeekly(state: FinanceState, events: CashEvent[]): SafeWeek
   };
 }
 
-function buildTimeline(state: FinanceState, events: CashEvent[]): ProjectionPoint[] {
+function buildTimeline(state: FinanceState, events: CashEvent[], startingCash: number): ProjectionPoint[] {
   const weekDates = eachWeek(state.semester.currentDate, state.semester.endDate);
-  let balance = state.cash.checking;
+  let balance = startingCash;
   let eventIndex = 0;
   const sorted = [...events].sort((a, b) => asDate(a.date).getTime() - asDate(b.date).getTime());
 
@@ -154,13 +182,14 @@ function buildTimeline(state: FinanceState, events: CashEvent[]): ProjectionPoin
 
 export function buildProjection(state: FinanceState): FinancialProjection {
   const events = listFutureEvents(state);
-  const safeWeekly = summarizeSafeWeekly(state, events);
-  const timeline = buildTimeline(state, events);
-  const projectedEndingBalance = Math.round(state.cash.checking + events.reduce((sum, event) => sum + event.amount, 0));
+  const impact = budgetImpact(state);
+  const safeWeekly = summarizeSafeWeekly(state, events, impact);
+  const timeline = buildTimeline(state, events, safeWeekly.currentCash);
+  const projectedEndingBalance = Math.round(safeWeekly.currentCash + events.reduce((sum, event) => sum + event.amount, 0));
   const expectedRemainingIncome = safeWeekly.expectedRemainingIncome;
   const requiredRemainingExpenses = safeWeekly.requiredRemainingExpenses;
   const discretionaryRemainingExpenses = safeWeekly.discretionaryAlreadyPlanned;
-  const lowestProjectedBalance = Math.min(...timeline.map((point) => point.balance), state.cash.checking);
+  const lowestProjectedBalance = Math.min(...timeline.map((point) => point.balance), safeWeekly.currentCash);
   const upcomingEvents = events.map((event) => ({
     id: event.id,
     date: event.date,
@@ -184,7 +213,8 @@ export function buildProjection(state: FinanceState): FinancialProjection {
     discretionaryRemainingExpenses,
     lowestProjectedBalance,
     upcomingEvents,
-    semesterHealth
+    semesterHealth,
+    thisWeek: weekProgress(state, safeWeekly.availableForDiscretionary, safeWeekly.weeksRemaining, impact)
   };
 }
 

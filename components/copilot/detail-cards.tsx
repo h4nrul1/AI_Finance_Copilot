@@ -31,7 +31,7 @@ export function CopilotDetailCard({ detail }: { detail: CopilotDetail }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-line bg-white px-3 py-2">
+    <div className="rounded-md border border-line bg-panel px-3 py-2">
       <p className="text-xs uppercase tracking-[0.08em] text-muted">{label}</p>
       <p className="font-semibold text-ink">{value}</p>
     </div>
@@ -41,7 +41,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function SpendingDetail({ categories, transactionCount }: { categories: Array<{ category: string; total: number }>; transactionCount: number }) {
   const total = categories.reduce((sum, item) => sum + item.total, 0);
   return (
-    <div className="rounded-lg border border-line bg-white p-4 text-sm">
+    <div className="rounded-lg border border-line bg-panel p-4 text-sm">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.10em] text-muted">
         Logged spending · {transactionCount} purchases · {formatCurrency(total, 2)}
       </p>
@@ -77,7 +77,7 @@ function MaxAffordableDetail({ result }: { result: MaxAffordableResult }) {
   ].filter((tier) => tier !== null);
 
   return (
-    <div className="rounded-lg border border-line bg-white p-4 text-sm">
+    <div className="rounded-lg border border-line bg-panel p-4 text-sm">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.10em] text-muted">
         Spending limit for a purchase on {formatDate(result.date)}
       </p>

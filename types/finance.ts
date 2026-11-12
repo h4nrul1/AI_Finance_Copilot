@@ -32,6 +32,11 @@ export interface CashPosition {
   targetEndingBuffer: number;
   /** True when checking came from a range during setup rather than an exact number. */
   checkingEstimated?: boolean;
+  /**
+   * The day checking was entered. Planned income and expenses dated from then until yesterday are applied to it
+   * automatically. Missing on demo plans, whose balance is always as of their fixed date.
+   */
+  asOf?: string;
 }
 
 export interface IncomeEvent {
@@ -68,6 +73,13 @@ export interface Transaction {
   date: string;
   amount: number;
   category: Category;
+  /**
+   * Whether this purchase comes out of the weekly budget. When unset, it does unless the plan already budgets for
+   * its category (a grocery run is covered by a planned groceries expense). Set when the student overrides that.
+   */
+  extra?: boolean;
+  /** Logged after the checking balance was last entered, so the balance doesn't include it yet. */
+  pending?: boolean;
 }
 
 export interface FinancialGoal {
@@ -144,6 +156,14 @@ export interface UpcomingEvent {
 }
 
 export interface SafeWeeklyBreakdown {
+  /** Checking as the student last entered it, and the day they entered it. */
+  enteredCash: number;
+  balanceDate: string;
+  /** Planned income and expenses dated since then (before today), already applied to currentCash. */
+  incomeSinceBalance: number;
+  expensesSinceBalance: number;
+  /** Spending logged since then that comes out of the weekly budget, already taken out of currentCash. */
+  loggedSpending: number;
   currentCash: number;
   expectedRemainingIncome: number;
   requiredRemainingExpenses: number;
@@ -164,6 +184,17 @@ export interface FinancialProjection {
   lowestProjectedBalance: number;
   upcomingEvents: UpcomingEvent[];
   semesterHealth: "On Track" | "Tight" | "At Risk";
+  thisWeek: WeekProgress;
+}
+
+/** This week's extra spending against the weekly budget as it stood when the week began (Monday to Sunday). */
+export interface WeekProgress {
+  startDate: string;
+  endDate: string;
+  budget: number;
+  spent: number;
+  /** Negative when the week is over budget. */
+  left: number;
 }
 
 export type VerdictLevel = "comfortable" | "tight" | "not-recommended";

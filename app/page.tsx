@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarClock, TrendingDown, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp } from "lucide-react";
 import { CashFlowChart } from "@/components/charts/cash-flow-chart";
 import { AccuracyCard } from "@/components/dashboard/accuracy-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -10,6 +11,7 @@ import { AffordabilityWidget } from "@/components/scenarios/affordability-widget
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { useFinance } from "@/components/providers/finance-provider";
+import { categoryPace } from "@/lib/finance/spending";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function OverviewPage() {
@@ -19,6 +21,9 @@ export default function OverviewPage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const healthTone = projection.semesterHealth === "On Track" ? "good" : projection.semesterHealth === "Tight" ? "warn" : "bad";
+  const { loggedSpending, enteredCash, currentCash, safeWeeklySpending, balanceDate } = projection.safeWeekly;
+  const week = projection.thisWeek;
+  const overPlan = categoryPace(state).filter((pace) => pace.over > 0);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -35,11 +40,38 @@ export default function OverviewPage() {
 
       <AccuracyCard />
 
+      {overPlan.length > 0 ? (
+        <div className="flex items-start gap-3 rounded-lg border border-coral/40 bg-coral/10 p-4 text-sm leading-6 text-ink">
+          <AlertTriangle className="mt-0.5 shrink-0 text-coral" size={18} />
+          <p>
+            You&apos;re over plan this month on{" "}
+            {overPlan.map((pace, index) => (
+              <span key={pace.category}>
+                {index > 0 ? (index === overPlan.length - 1 ? " and " : ", ") : ""}
+                <strong>{pace.category}</strong> ({formatCurrency(pace.over, 2)})
+              </span>
+            ))}
+            . The extra comes out of your weekly budget.{" "}
+            <Link href="/spending" className="font-semibold underline">
+              See spending
+            </Link>
+          </p>
+        </div>
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Current Cash"
-          value={formatCurrency(state.cash.checking)}
-          detail={`${formatCurrency(state.cash.savings)} set aside in savings`}
+          value={formatCurrency(currentCash)}
+          detail={
+            currentCash !== enteredCash
+              ? `${formatCurrency(enteredCash)} entered ${formatDate(balanceDate)}, ${
+                  currentCash !== enteredCash - loggedSpending
+                    ? `updated for planned items${loggedSpending > 0 ? " and spending" : ""} since`
+                    : "minus spending logged since"
+                }`
+              : `${formatCurrency(state.cash.savings)} set aside in savings`
+          }
         />
         <MetricCard
           label="Projected End Cash"
@@ -48,10 +80,14 @@ export default function OverviewPage() {
           tone={healthTone === "good" ? "good" : "warn"}
         />
         <MetricCard
-          label="Safe Weekly Spending"
-          value={`${formatCurrency(projection.safeWeekly.safeWeeklySpending)}/wk`}
-          detail={`Protects a ${formatCurrency(state.cash.targetEndingBuffer)} ending buffer`}
-          tone="good"
+          label={week.left >= 0 ? "Left This Week" : "Over This Week"}
+          value={formatCurrency(Math.abs(week.left))}
+          detail={
+            week.spent > 0
+              ? `${formatCurrency(week.spent, 2)} extra spent of ${formatCurrency(week.budget)}. Future weeks: ${formatCurrency(safeWeeklySpending)}/wk`
+              : `Weekly budget ${formatCurrency(week.budget)}, protecting your ${formatCurrency(state.cash.targetEndingBuffer)} goal`
+          }
+          tone={week.left >= 0 ? "good" : "warn"}
         />
         <MetricCard
           label="Next Required Expense"

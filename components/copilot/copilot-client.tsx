@@ -285,7 +285,7 @@ function CopilotChat({ owner, accountUserId }: { owner: string; accountUserId: s
                         <span
                           key={`${call.name}-${index}`}
                           title={JSON.stringify(call.input)}
-                          className={`inline-flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs font-semibold ${call.ok ? "text-moss" : "text-coral"}`}
+                          className={`inline-flex items-center gap-1 rounded-md bg-panel/70 px-2 py-1 text-xs font-semibold ${call.ok ? "text-moss" : "text-coral"}`}
                         >
                           <Wrench size={12} />
                           {TOOL_LABELS[call.name] ?? call.name}
@@ -330,7 +330,7 @@ function CopilotChat({ owner, accountUserId }: { owner: string; accountUserId: s
         </Card>
 
         <aside className="space-y-3">
-          <div className="rounded-lg border border-line bg-white p-4 shadow-soft">
+          <div className="rounded-lg border border-line bg-panel p-4 shadow-soft">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <MessagesSquare size={17} className="text-moss" />
@@ -381,7 +381,7 @@ function CopilotChat({ owner, accountUserId }: { owner: string; accountUserId: s
               ) : null}
             </div>
           </div>
-          <div className="rounded-lg border border-line bg-white p-4 shadow-soft">
+          <div className="rounded-lg border border-line bg-panel p-4 shadow-soft">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles size={17} className="text-gold" />
               <p className="font-semibold text-ink">Try asking</p>

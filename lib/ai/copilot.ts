@@ -177,7 +177,15 @@ function describeExecution(execution: ToolExecution, state: FinanceState) {
     case "snapshot":
       return `You can safely spend about ${formatCurrency(detail.breakdown.safeWeeklySpending)}/week on flexible items for the next ${detail.breakdown.weeksRemaining.toFixed(
         1
-      )} weeks while protecting a ${formatCurrency(detail.breakdown.targetEndingBuffer)} goal. Projected semester-end cash is ${formatCurrency(detail.projectedEndingCash)} (${detail.semesterHealth}).`;
+      )} weeks while protecting a ${formatCurrency(detail.breakdown.targetEndingBuffer)} goal. Projected semester-end cash is ${formatCurrency(detail.projectedEndingCash)} (${detail.semesterHealth}).${
+        detail.thisWeek.spent > 0
+          ? ` This week you've logged ${formatCurrency(detail.thisWeek.spent, 2)} of extra spending, ${
+              detail.thisWeek.left >= 0
+                ? `leaving ${formatCurrency(detail.thisWeek.left)} of this week's ${formatCurrency(detail.thisWeek.budget)} budget.`
+                : `${formatCurrency(-detail.thisWeek.left)} over this week's ${formatCurrency(detail.thisWeek.budget)} budget.`
+            }`
+          : ""
+      }`;
     default:
       return "Done.";
   }

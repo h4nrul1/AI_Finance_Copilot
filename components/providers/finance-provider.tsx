@@ -9,6 +9,7 @@ import { normalizePlan } from "@/lib/data/normalize-plan";
 import { demoState } from "@/lib/data/seed";
 import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
+import { withCash } from "@/lib/finance/spending";
 import { applyScenario, scenarioInputProblem } from "@/lib/finance/tools";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { deleteAllAccountChats } from "@/lib/supabase/chat-store";
@@ -259,12 +260,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setState(demoState);
         setStatus("needs-setup");
       },
-      updateCash: (checking, savings, buffer) =>
-        setState((current) => ({
-          ...current,
-          // A setup estimate stays an estimate until the checking amount itself is changed.
-          cash: { checking, savings, targetEndingBuffer: buffer, checkingEstimated: current.cash.checkingEstimated && checking === current.cash.checking }
-        })),
+      updateCash: (checking, savings, buffer) => setState((current) => withCash(current, checking, savings, buffer)),
       dismissAccuracyCard: () => setState((current) => ({ ...current, accuracyCardDismissed: true })),
       updateSemester: (name, startDate, endDate) =>
         setState((current) => ({ ...current, semester: { ...current.semester, name, startDate, endDate } })),

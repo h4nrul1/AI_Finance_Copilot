@@ -258,7 +258,7 @@ export function SetupFlow() {
             maxLength={800}
             rows={3}
             placeholder="e.g. $300 trip home in December, around $150 for textbooks next month"
-            className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20"
+            className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink outline-none transition placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20"
           />
           {extrasError ? (
             <div className="rounded-md border border-gold/50 bg-gold/10 p-3 text-sm text-ink">
@@ -394,7 +394,7 @@ function AmountPicker({
               }}
               className={cn(
                 "rounded-md border px-3 py-2 text-sm font-medium transition",
-                active ? "border-moss bg-moss text-white" : "border-line bg-white text-ink hover:border-moss"
+                active ? "border-moss bg-moss text-white" : "border-line bg-panel text-ink hover:border-moss"
               )}
             >
               {option.label}
@@ -464,7 +464,7 @@ function ToggleChips({
             onClick={() => onToggle(item.id)}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition",
-              active ? "border-moss bg-moss/10 text-moss" : "border-line bg-white text-ink hover:border-moss"
+              active ? "border-moss bg-moss/10 text-moss" : "border-line bg-panel text-ink hover:border-moss"
             )}
           >
             {active ? <Check size={14} /> : null}

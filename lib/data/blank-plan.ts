@@ -15,7 +15,7 @@ export function createBlankPlan(today: string, name = ""): FinanceState {
   return {
     student: { name: name.trim(), school: "", major: "", year: "" },
     semester: { ...guessSemester(today), currentDate: today },
-    cash: { checking: 0, savings: 0, targetEndingBuffer: 500 },
+    cash: { checking: 0, savings: 0, targetEndingBuffer: 500, asOf: today },
     incomes: [],
     expenses: [],
     transactions: [],
@@ -24,8 +24,14 @@ export function createBlankPlan(today: string, name = ""): FinanceState {
   };
 }
 
-/** Personal plans always use the real date as "today"; demo plans keep their sample date. */
+/**
+ * Personal plans always use the real date as "today"; demo plans keep their sample date. A plan saved before the
+ * balance date was tracked treats its balance as current on the day it was last open, so anything planned since then
+ * is applied to it.
+ */
 export function withToday(state: FinanceState, today: string): FinanceState {
-  if (state.mode !== "personal" || state.semester.currentDate === today) return state;
-  return { ...state, semester: { ...state.semester, currentDate: today } };
+  if (state.mode !== "personal") return state;
+  const cash = state.cash.asOf ? state.cash : { ...state.cash, asOf: state.semester.currentDate };
+  if (state.semester.currentDate === today && cash === state.cash) return state;
+  return { ...state, cash, semester: { ...state.semester, currentDate: today } };
 }

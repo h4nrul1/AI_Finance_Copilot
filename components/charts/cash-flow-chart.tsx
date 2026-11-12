@@ -35,27 +35,27 @@ export function CashFlowChart({ baseline, scenario }: Props) {
         <AreaChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="baselineFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#5f7f63" stopOpacity={0.32} />
-              <stop offset="95%" stopColor="#5f7f63" stopOpacity={0.02} />
+              <stop offset="5%" stopColor="rgb(var(--sage))" stopOpacity={0.32} />
+              <stop offset="95%" stopColor="rgb(var(--sage))" stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="scenarioFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#d66f5d" stopOpacity={0.26} />
-              <stop offset="95%" stopColor="#d66f5d" stopOpacity={0.02} />
+              <stop offset="5%" stopColor="rgb(var(--coral))" stopOpacity={0.26} />
+              <stop offset="95%" stopColor="rgb(var(--coral))" stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="#dfe4dc" strokeDasharray="3 3" />
+          <CartesianGrid stroke="rgb(var(--line))" strokeDasharray="3 3" />
           <XAxis dataKey="date" tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} allowDecimals={false} tickFormatter={formatAxisDollars} />
           <Tooltip
             formatter={(value: number) => formatCurrency(value)}
-            contentStyle={{ borderRadius: 8, border: "1px solid #dfe4dc" }}
+            contentStyle={{ borderRadius: 8, border: "1px solid rgb(var(--line))", background: "rgb(var(--panel))", color: "rgb(var(--ink))" }}
           />
           <Legend />
           <Area
             type="monotone"
             dataKey="baseline"
             name="Baseline"
-            stroke="#335946"
+            stroke="rgb(var(--moss))"
             strokeWidth={3}
             fill="url(#baselineFill)"
           />
@@ -64,7 +64,7 @@ export function CashFlowChart({ baseline, scenario }: Props) {
               type="monotone"
               dataKey="scenario"
               name="Scenario"
-              stroke="#d66f5d"
+              stroke="rgb(var(--coral))"
               strokeWidth={3}
               fill="url(#scenarioFill)"
             />

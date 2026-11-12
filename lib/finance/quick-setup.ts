@@ -324,7 +324,8 @@ export function buildQuickPlan(input: QuickSetupInput, today: string, name = "",
       checking: checking.value,
       savings: Math.max(0, input.savings),
       targetEndingBuffer: Math.max(0, input.goal),
-      checkingEstimated: checking.estimated
+      checkingEstimated: checking.estimated,
+      asOf: today
     },
     incomes: [...incomes, ...(extras?.incomes ?? []).map((income, index) => draftIncomeToEvent(income, `income-extra-${index}`))],
     expenses: [...expenses, ...(extras?.expenses ?? []).map((expense, index) => draftExpenseToEvent(expense, `expense-extra-${index}`))]

@@ -43,7 +43,7 @@ export function Welcome() {
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <section className="flex flex-col rounded-lg border border-line bg-white p-5 shadow-soft">
+          <section className="flex flex-col rounded-lg border border-line bg-panel p-5 shadow-soft">
             <Sparkles className="text-moss" size={22} />
             <h2 className="mt-3 text-lg font-semibold text-ink">Start my own plan</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
@@ -63,7 +63,7 @@ export function Welcome() {
             </button>
           </section>
 
-          <section className="flex flex-col rounded-lg border border-line bg-white p-5 shadow-soft">
+          <section className="flex flex-col rounded-lg border border-line bg-panel p-5 shadow-soft">
             <PlayCircle className="text-blue" size={22} />
             <h2 className="mt-3 text-lg font-semibold text-ink">Explore the demo</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
