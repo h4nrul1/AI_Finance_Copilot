@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { Expense, FinanceState, IncomeEvent, Scenario, Transaction, VerdictSettings } from "@/types/finance";
 import { clearSessionChats } from "@/lib/ai/chat-history";
 import { withToday } from "@/lib/data/blank-plan";
+import { normalizePlan } from "@/lib/data/normalize-plan";
 import { demoState } from "@/lib/data/seed";
 import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
@@ -134,7 +135,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       setSaveStatus("idle");
       const saved = readGuestPlan();
       if (saved) {
-        setState(withToday(saved, localToday()));
+        setState(withToday(normalizePlan(saved), localToday()));
         setStatus("ready");
       } else {
         setState(demoState);
@@ -160,7 +161,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         }
         if (id !== loadId.current) return;
         if (plan) {
-          const current = withToday(plan, localToday());
+          const current = withToday(normalizePlan(plan), localToday());
           lastSynced.current = JSON.stringify(current);
           setState(current);
           setSaveStatus("saved");
@@ -241,7 +242,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setStatus("ready");
       },
       startPlan: (plan) => {
-        setState(withToday(plan, localToday()));
+        setState(withToday(normalizePlan(plan), localToday()));
         setStatus("ready");
       },
       startOver: async () => {

@@ -422,6 +422,49 @@ function FrequencySelect({ recurring, frequency, onChange }: { recurring: boolea
   );
 }
 
+function ItemDates({ item, onChange }: {
+  item: Pick<Expense, "id" | "startDate" | "endDate" | "recurring">;
+  onChange: (dates: { startDate: string; endDate?: string }) => void;
+}) {
+  const [startDate, setStartDate] = useState(item.startDate);
+  const [endDate, setEndDate] = useState(item.endDate ?? "");
+
+  useEffect(() => {
+    setStartDate(item.startDate);
+    setEndDate(item.endDate ?? "");
+  }, [item.startDate, item.endDate, item.recurring]);
+
+  const error = item.recurring && endDate && endDate < startDate ? "Ends on must be on or after the start date." : null;
+  const errorId = `${item.id}-dates-error`;
+
+  function update(nextStart: string, nextEnd: string) {
+    setStartDate(nextStart);
+    setEndDate(nextEnd);
+    if (!nextStart || (item.recurring && nextEnd && nextEnd < nextStart)) return;
+    onChange({ startDate: nextStart, endDate: item.recurring ? nextEnd || undefined : undefined });
+  }
+
+  return (
+    <div className={cn("grid min-w-0 gap-3", item.recurring && "sm:col-span-2 sm:grid-cols-2")}>
+      <div className="min-w-0">
+        <Label htmlFor={`${item.id}-start`}>Date</Label>
+        <Input id={`${item.id}-start`} className="min-w-0 max-w-full" type="date" value={startDate}
+          aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}
+          onChange={(event) => update(event.target.value, endDate)} />
+      </div>
+      {item.recurring ? (
+        <div className="min-w-0">
+          <Label htmlFor={`${item.id}-end`}>Ends on (optional)</Label>
+          <Input id={`${item.id}-end`} className="min-w-0 max-w-full" type="date" min={startDate} value={endDate}
+            aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}
+            onChange={(event) => update(startDate, event.target.value)} />
+        </div>
+      ) : null}
+      {error ? <p id={errorId} role="alert" className="text-sm text-coral sm:col-span-2">{error}</p> : null}
+    </div>
+  );
+}
+
 function EditableIncomeTable({
   incomes,
   totals,
@@ -440,11 +483,12 @@ function EditableIncomeTable({
   const { currentDate: today, endDate: semesterEnd } = useFinance().state.semester;
   return (
     <Card>
+      <div className="[&>div]:flex-wrap">
       <CardHeader
         title="Income"
-        eyebrow="Guaranteed sources"
+        eyebrow="Income sources"
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <TotalBadge label="Still to come" value={`+${formatCurrency(total)}`} tone="good" />
             <Button variant="secondary" onClick={onAdd}>
               Add
@@ -452,27 +496,34 @@ function EditableIncomeTable({
           </div>
         }
       />
+      </div>
       <div className="grid gap-3">
         {incomes.map((income) => (
           <div key={income.id} className="rounded-lg border border-line bg-paper p-3">
-            <div className="grid gap-3 md:grid-cols-[1.4fr_120px_150px_130px_44px] md:items-end">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end [&>div]:min-w-0">
               <Field label="Name" value={income.name} onChange={(name) => onSave({ ...income, name })} />
               <NumberField label={income.estimated ? "Amount (est.)" : "Amount"} value={income.amount} onChange={(amount) => onSave({ ...income, amount, estimated: false })} />
-              <Field label="Date" type="date" value={income.startDate} onChange={(startDate) => onSave({ ...income, startDate })} />
+              <ItemDates item={income} onChange={(dates) => onSave({ ...income, ...dates })} />
               <FrequencySelect
                 recurring={income.recurring}
                 frequency={income.frequency}
-                onChange={(recurring, frequency) => onSave({ ...income, recurring, frequency })}
+                onChange={(recurring, frequency) => onSave({ ...income, recurring, frequency, endDate: recurring ? income.endDate : undefined })}
               />
+              <label className="flex items-start gap-2 text-sm text-muted sm:col-span-2">
+                <input type="checkbox" className="mt-1 shrink-0" checked={!income.guaranteed}
+                  onChange={(event) => onSave({ ...income, guaranteed: !event.target.checked })} />
+                <span>Not guaranteed (don&apos;t count it in my projection)</span>
+              </label>
               <Button variant="ghost" size="icon" onClick={() => onDelete(income.id)} aria-label="Delete income">
                 <Trash2 size={16} />
               </Button>
             </div>
             <div className="mt-2">
+              {income.endDate ? <p className="text-xs text-muted">Ends {formatDate(income.endDate)}</p> : null}
               {income.guaranteed ? (
                 <ItemTotal item={income} total={totals[income.id]} sign="+" today={today} semesterEnd={semesterEnd} />
               ) : (
-                <span className="text-xs text-muted">Not guaranteed, so not counted</span>
+                <span className="text-xs text-muted">Not counted — not guaranteed</span>
               )}
             </div>
           </div>
@@ -502,6 +553,7 @@ function EditableExpenseTable({
   const { currentDate: today, endDate: semesterEnd } = useFinance().state.semester;
   return (
     <Card>
+      <div className="[&>div]:flex-wrap">
       <CardHeader
         title="Expenses"
         eyebrow="Required and flexible"
@@ -515,10 +567,11 @@ function EditableExpenseTable({
           </div>
         }
       />
+      </div>
       <div className="grid gap-3">
         {expenses.map((expense) => (
           <div key={expense.id} className="rounded-lg border border-line bg-paper p-3">
-            <div className="grid gap-3 md:grid-cols-[1.2fr_130px_110px_150px_130px_100px_44px] md:items-end">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end [&>div]:min-w-0">
               <Field label="Name" value={expense.name} onChange={(name) => onSave({ ...expense, name })} />
               <div>
                 <Label>Category</Label>
@@ -529,11 +582,11 @@ function EditableExpenseTable({
                 </Select>
               </div>
               <NumberField label={expense.estimated ? "Amount (est.)" : "Amount"} value={expense.amount} onChange={(amount) => onSave({ ...expense, amount, estimated: false })} />
-              <Field label="Date" type="date" value={expense.startDate} onChange={(startDate) => onSave({ ...expense, startDate })} />
+              <ItemDates item={expense} onChange={(dates) => onSave({ ...expense, ...dates })} />
               <FrequencySelect
                 recurring={expense.recurring}
                 frequency={expense.frequency}
-                onChange={(recurring, frequency) => onSave({ ...expense, recurring, frequency })}
+                onChange={(recurring, frequency) => onSave({ ...expense, recurring, frequency, endDate: recurring ? expense.endDate : undefined })}
               />
               <label className="flex h-10 items-center gap-2 text-sm text-muted">
                 <input type="checkbox" checked={expense.required} onChange={(event) => onSave({ ...expense, required: event.target.checked })} />
@@ -543,7 +596,8 @@ function EditableExpenseTable({
                 <Trash2 size={16} />
               </Button>
             </div>
-            <div className="mt-2 flex items-center gap-2">
+            {expense.endDate ? <p className="mt-2 text-xs text-muted">Ends {formatDate(expense.endDate)}</p> : null}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{expense.required ? "Required" : "Flexible"}</span>
               <ItemTotal item={expense} total={totals[expense.id]} sign="−" today={today} semesterEnd={semesterEnd} />
             </div>
