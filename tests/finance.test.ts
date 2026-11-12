@@ -12,6 +12,30 @@ import {
 const chicagoTrip: Scenario = { id: "trip", name: "Chicago Trip", description: "", type: "purchase", amount: 500, date: "2026-11-12" };
 
 describe("semester projection engine", () => {
+  it("counts no December payment for a recurring expense ending November 30", () => {
+    const rent = { ...demoState.expenses.find((expense) => expense.id === "expense-rent")!, endDate: "2026-11-30" };
+    const state = { ...demoState, expenses: [rent] };
+    const projection = buildProjection(state);
+
+    expect(planItemTotals(state)[rent.id]).toMatchObject({ count: 2, total: 1500 });
+    expect(projection.requiredRemainingExpenses).toBe(1500);
+    expect(projection.upcomingEvents.filter((event) => event.kind === "expense").map((event) => event.date))
+      .toEqual(["2026-10-01", "2026-11-01"]);
+  });
+
+  it("excludes non-guaranteed income from expected income and the balance forecast", () => {
+    const state = {
+      ...demoState,
+      incomes: demoState.incomes.map((income) => income.id === "income-job" ? { ...income, guaranteed: false } : income)
+    };
+    const projection = buildProjection(state);
+
+    expect(projection.expectedRemainingIncome).toBe(500);
+    expect(projection.projectedEndingBalance).toBe(buildProjection(demoState).projectedEndingBalance - 1300);
+    expect(planItemTotals(state)["income-job"]).toMatchObject({ count: 0, total: 0 });
+    expect(projection.upcomingEvents.some((event) => event.name === "Part-time campus job")).toBe(false);
+  });
+
   it("calculates projected ending balance from current cash and future events", () => {
     const projection = buildProjection(demoState);
 

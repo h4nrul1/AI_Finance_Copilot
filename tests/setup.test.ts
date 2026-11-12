@@ -55,6 +55,15 @@ describe("quick setup ranges", () => {
 });
 
 describe("building a plan from quick setup", () => {
+  it("explicitly guarantees regular and extra income", () => {
+    const plan = buildQuickPlan(input, today, "", {
+      incomes: [{ name: "Extra aid", amount: 100, frequency: "one-time", startDate: today, endDate: null }],
+      expenses: [], notes: []
+    });
+    expect(plan.incomes).toHaveLength(3);
+    expect(plan.incomes.every((income) => income.guaranteed === true)).toBe(true);
+  });
+
   it("turns taps into a plan the engine can project", () => {
     const plan = buildQuickPlan(input, today, "Jordan");
     const projection = buildProjection(plan);

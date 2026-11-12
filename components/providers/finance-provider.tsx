@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Expense, FinanceState, IncomeEvent, Scenario, Transaction, VerdictSettings } from "@/types/finance";
 import { withToday } from "@/lib/data/blank-plan";
+import { normalizePlan } from "@/lib/data/normalize-plan";
 import { demoState } from "@/lib/data/seed";
 import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
@@ -56,7 +57,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       saved = null;
     }
     if (saved) {
-      setState(withToday(saved, localToday()));
+      setState(withToday(normalizePlan(saved), localToday()));
       setStatus("ready");
     } else {
       setStatus("needs-setup");
@@ -85,7 +86,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setStatus("ready");
       },
       startPlan: (plan) => {
-        setState(withToday(plan, localToday()));
+        setState(withToday(normalizePlan(plan), localToday()));
         setStatus("ready");
       },
       startOver: () => {
