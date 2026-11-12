@@ -3,12 +3,14 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Expense, FinanceState, IncomeEvent, Scenario, Transaction, VerdictSettings } from "@/types/finance";
+import { clearSessionChats } from "@/lib/ai/chat-history";
 import { withToday } from "@/lib/data/blank-plan";
 import { demoState } from "@/lib/data/seed";
 import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
 import { applyScenario, scenarioInputProblem } from "@/lib/finance/tools";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { deleteAllAccountChats } from "@/lib/supabase/chat-store";
 import { choosePlanOnLogin, deleteAccountPlan, loadAccountPlan, saveAccountPlan, shouldSaveToAccount } from "@/lib/supabase/plan-store";
 
 /**
@@ -246,9 +248,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         if (user && supabase) {
           await deleteAccountPlan(supabase, user.id);
           lastSynced.current = null;
+          // Best effort: the plan is already gone, and leftover chats only mean old answers next time.
+          await deleteAllAccountChats(supabase, user.id).catch((error) => console.error("[account] Couldn't delete the copilot chats:", error));
         } else {
           clearGuestPlan();
         }
+        // The chats' answers were about the deleted plan.
+        clearSessionChats();
         setState(demoState);
         setStatus("needs-setup");
       },

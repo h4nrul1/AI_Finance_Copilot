@@ -94,7 +94,7 @@ OPENAI_MODEL=gpt-4o-mini
 
 ### 3b. Accounts (optional)
 
-Without Supabase keys the app runs in **guest-only mode**: everything works and plans are saved in the browser. To work on log-in and saved accounts, ask the project lead for the Supabase keys and add them to `.env.local` (see `.env.example`). The database table is defined in `supabase/migrations/0001_plans.sql`.
+Without Supabase keys the app runs in **guest-only mode**: everything works and plans are saved in the browser. To work on log-in and saved accounts, ask the project lead for the Supabase keys and add them to `.env.local` (see `.env.example`). The database tables are defined in `supabase/migrations/` (run each file once in the Supabase SQL Editor, in order): `0001_plans.sql` saves plans, `0002_copilot_chats.sql` saves each student's copilot chats.
 
 ### 4. Run it
 
