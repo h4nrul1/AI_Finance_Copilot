@@ -31,6 +31,7 @@ function warnOnce(message: string) {
 }
 
 export const PLANS_TABLE = "plans";
+export const CHATS_TABLE = "copilot_chats";
 
 /** Only allow redirects to pages on this site ("/semester"), never to other sites ("//evil.com", "https://..."). */
 export function safeRedirectPath(value: string | null) {
