@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Bot, Clock, Info, TrendingUp } from "lucide-react";
+import { PracticePortfolioCard } from "@/components/invest/practice-portfolio";
 import { VerdictCard } from "@/components/scenarios/verdict-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -95,6 +96,8 @@ export default function InvestPage() {
       </section>
 
       <PlanImpactCard />
+
+      <PracticePortfolioCard />
 
       <details className="rounded-lg border border-line bg-panel p-4 text-sm">
         <summary className="cursor-pointer font-semibold text-ink">All investment types at a glance</summary>

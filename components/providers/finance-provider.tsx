@@ -9,6 +9,7 @@ import { normalizePlan } from "@/lib/data/normalize-plan";
 import { demoState } from "@/lib/data/seed";
 import { localToday } from "@/lib/finance/dates";
 import { buildProjection } from "@/lib/finance/engine";
+import { buyShares, sellShares } from "@/lib/finance/portfolio";
 import { withCash } from "@/lib/finance/spending";
 import { applyScenario, scenarioInputProblem } from "@/lib/finance/tools";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -58,6 +59,9 @@ interface FinanceContextValue {
   saveTransaction: (transaction: Transaction) => void;
   deleteTransaction: (id: string) => void;
   applyScenarioToPlan: (scenario: Scenario) => void;
+  /** Practice trades move money between checking and the practice portfolio. Each returns an error message, or null on success. */
+  buyPractice: (symbol: string, dollars: number, price: number) => string | null;
+  sellPractice: (symbol: string, shares: number, price: number) => string | null;
 }
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -276,6 +280,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       applyScenarioToPlan: (scenario) => {
         if (scenarioInputProblem(state, scenario)) return;
         setState((current) => scenarioInputProblem(current, scenario) ? current : applyScenario(current, scenario));
+      },
+      buyPractice: (symbol, dollars, price) => {
+        const result = buyShares(state, symbol, dollars, price);
+        if (!result.ok) return result.error;
+        setState((current) => {
+          const next = buyShares(current, symbol, dollars, price);
+          return next.ok ? next.state : current;
+        });
+        return null;
+      },
+      sellPractice: (symbol, shares, price) => {
+        const result = sellShares(state, symbol, shares, price);
+        if (!result.ok) return result.error;
+        setState((current) => {
+          const next = sellShares(current, symbol, shares, price);
+          return next.ok ? next.state : current;
+        });
+        return null;
       }
     }),
     [projection, state, status, supabase, user, guestChosen, saveStatus]

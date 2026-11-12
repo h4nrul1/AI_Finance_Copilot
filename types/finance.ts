@@ -99,6 +99,31 @@ export interface VerdictSettings {
   tightDropLimit: number;
 }
 
+/** Practice (fake money) investing. Buying moves dollars out of checking, selling moves them back. */
+export interface PracticeHolding {
+  symbol: string;
+  /** Fractional shares, since students buy by dollar amount. */
+  shares: number;
+  /** Total dollars paid for the shares still held. */
+  costBasis: number;
+}
+
+export interface PracticeTrade {
+  id: string;
+  date: string;
+  side: "buy" | "sell";
+  symbol: string;
+  shares: number;
+  price: number;
+  /** Dollars moved: out of checking for a buy, into checking for a sell. */
+  amount: number;
+}
+
+export interface PracticePortfolio {
+  holdings: PracticeHolding[];
+  trades: PracticeTrade[];
+}
+
 export interface FinanceState {
   student: StudentProfile;
   semester: Semester;
@@ -116,6 +141,8 @@ export interface FinanceState {
   mode?: "demo" | "personal";
   /** Set when the student hides the "make your plan more accurate" card on Overview. */
   accuracyCardDismissed?: boolean;
+  /** Optional so plans saved before practice investing existed still load. */
+  portfolio?: PracticePortfolio;
 }
 
 export type ScenarioType =
