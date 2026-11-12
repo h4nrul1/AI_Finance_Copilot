@@ -4,7 +4,36 @@
 
 :root {
   color-scheme: light;
-  background: #f6f7f2;
+  --ink: 23 32 38;
+  --muted: 100 112 119;
+  --paper: 246 247 242;
+  --panel: 255 255 255;
+  --line: 223 228 220;
+  --sage: 95 127 99;
+  --moss: 51 89 70;
+  --coral: 214 111 93;
+  --gold: 196 155 69;
+  --gold-ink: 118 90 25;
+  --blue: 64 121 140;
+  --shadow: 31 45 36;
+  background: rgb(var(--paper));
+}
+
+/* Set on <html> before the first paint by the script in app/layout.tsx. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: 230 235 231;
+  --muted: 154 167 160;
+  --paper: 17 24 21;
+  --panel: 26 35 31;
+  --line: 48 61 54;
+  --sage: 127 161 132;
+  --moss: 79 138 106;
+  --coral: 226 135 116;
+  --gold: 212 173 90;
+  --gold-ink: 226 196 128;
+  --blue: 98 162 184;
+  --shadow: 0 0 0;
 }
 
 * {
@@ -15,10 +44,10 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(246, 247, 242, 0.94), rgba(246, 247, 242, 1)),
-    radial-gradient(circle at top left, rgba(95, 127, 99, 0.16), transparent 36%),
-    #f6f7f2;
-  color: #172026;
+    linear-gradient(180deg, rgb(var(--paper) / 0.94), rgb(var(--paper))),
+    radial-gradient(circle at top left, rgb(var(--sage) / 0.16), transparent 36%),
+    rgb(var(--paper));
+  color: rgb(var(--ink));
 }
 
 button,

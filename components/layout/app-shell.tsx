@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Welcome } from "@/components/onboarding/welcome";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useFinance } from "@/components/providers/finance-provider";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -69,15 +70,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:flex">
-      <aside className="border-b border-line bg-white/90 px-4 py-4 backdrop-blur lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:border-b-0 lg:border-r lg:px-5">
+      <aside className="border-b border-line bg-panel/90 px-4 py-4 backdrop-blur lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:border-b-0 lg:border-r lg:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-moss text-white">
             <GraduationCap size={22} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold text-ink">SemesterFi</p>
             <p className="text-xs text-muted">{state.student.school || "Semester planner"}</p>
           </div>
+          <ThemeToggle className="ml-auto shrink-0" />
         </div>
 
         <nav className="mt-5 grid grid-cols-2 gap-2 lg:block lg:space-y-1">
@@ -137,7 +139,7 @@ function AccountStatus() {
 
   if (!user) {
     return (
-      <div className="mt-3 hidden rounded-lg border border-line bg-white p-4 lg:block">
+      <div className="mt-3 hidden rounded-lg border border-line bg-panel p-4 lg:block">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Guest</p>
         <p className="mt-1 text-sm text-ink">Saved in this browser only.</p>
         <div className="mt-3 flex gap-2">
@@ -167,7 +169,7 @@ function AccountStatus() {
   const Icon = saving.icon;
 
   return (
-    <Link href="/account" className="mt-3 hidden rounded-lg border border-line bg-white p-4 transition hover:border-moss lg:block">
+    <Link href="/account" className="mt-3 hidden rounded-lg border border-line bg-panel p-4 transition hover:border-moss lg:block">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Signed in</p>
       <p className="mt-1 truncate text-sm font-medium text-ink">{user.email}</p>
       <p className={cn("mt-1 flex items-center gap-1.5 text-xs", saveStatus === "error" ? "text-coral" : "text-muted")}>
@@ -181,7 +183,7 @@ function AccountStatus() {
 function PlanLoadError({ onSignOut }: { onSignOut: () => Promise<void> }) {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md rounded-lg border border-line bg-white p-6 text-center shadow-soft">
+      <div className="max-w-md rounded-lg border border-line bg-panel p-6 text-center shadow-soft">
         <AlertTriangle className="mx-auto text-coral" size={28} />
         <h1 className="mt-3 text-xl font-semibold text-ink">We couldn&apos;t load your plan</h1>
         <p className="mt-2 text-sm text-muted">Your saved plan is safe. Check your connection and try again.</p>

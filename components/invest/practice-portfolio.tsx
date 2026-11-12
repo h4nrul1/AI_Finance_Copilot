@@ -266,7 +266,7 @@ export function PracticePortfolioCard() {
 
 function Tile({ label, value, note, tone = "neutral" }: { label: string; value: string; note?: string; tone?: "neutral" | "good" | "bad" }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-3">
+    <div className="rounded-lg border border-line bg-panel p-3">
       <p className="text-xs font-semibold uppercase tracking-[0.10em] text-muted">{label}</p>
       <p className={cn("mt-1 text-xl font-semibold", tone === "good" ? "text-moss" : tone === "bad" ? "text-coral" : "text-ink")}>{value}</p>
       {note ? <p className="mt-0.5 text-xs text-muted">{note}</p> : null}

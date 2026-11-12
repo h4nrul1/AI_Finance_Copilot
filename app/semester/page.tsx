@@ -53,7 +53,7 @@ export default function SemesterPage() {
         <h1 className="mt-2 text-3xl font-semibold text-ink">Edit the assumptions behind the plan.</h1>
         <p className="mt-2 text-sm text-muted">
           Today in this plan is <strong className="text-ink">{formatDate(state.semester.currentDate)}</strong>. Totals count only what&apos;s
-          still ahead, through {formatDate(state.semester.endDate)}; anything earlier is already reflected in your checking balance.
+          still ahead, through {formatDate(state.semester.endDate)}; anything earlier is already counted in your current cash.
         </p>
       </header>
 
@@ -155,7 +155,13 @@ function Formula({ label, value, tone }: { label: string; value: string; tone?: 
 }
 
 function CashCard() {
-  const { state, updateCash } = useFinance();
+  const { state, projection, updateCash } = useFinance();
+  const { currentCash, enteredCash, balanceDate, incomeSinceBalance, expensesSinceBalance, loggedSpending } = projection.safeWeekly;
+  const changes = [
+    incomeSinceBalance > 0 ? `+${formatCurrency(incomeSinceBalance)} planned income` : "",
+    expensesSinceBalance > 0 ? `−${formatCurrency(expensesSinceBalance)} planned expenses` : "",
+    loggedSpending > 0 ? `−${formatCurrency(loggedSpending, 2)} spending from your log` : ""
+  ].filter(Boolean);
   const [checking, setChecking] = useState(state.cash.checking);
   const [savings, setSavings] = useState(state.cash.savings);
 
@@ -179,6 +185,16 @@ function CashCard() {
         />
         <NumberField id="savings" label="Savings (not counted)" value={savings} onChange={setSavings} />
       </div>
+      {currentCash !== enteredCash ? (
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Since you entered this on {formatDate(balanceDate)}: {changes.join(", ")}. So your plan uses{" "}
+          <strong className="text-ink">{formatCurrency(currentCash)}</strong> today. Enter your bank balance any time to correct it.
+        </p>
+      ) : (
+        <p className="mt-3 text-xs text-muted">
+          Entered {formatDate(balanceDate)}. Planned income and bills are applied to it automatically as their dates pass.
+        </p>
+      )}
       <Button className="mt-4" disabled={!dirty} onClick={() => updateCash(checking, savings, state.cash.targetEndingBuffer)}>
         <Save size={16} />
         {dirty ? "Save cash values" : "Saved"}
@@ -368,7 +384,7 @@ function ItemTotal({
         {item.recurring
           ? `all payments were before today (${formatDate(today)})`
           : `${paidWord} ${formatDate(item.startDate)}, before today (${formatDate(today)})`}
-        , so it&apos;s already reflected in your checking balance.
+        , so it&apos;s already counted in your current cash.
       </span>
     );
   }

@@ -186,7 +186,7 @@ export function findMaxAffordable(state: FinanceState, date: string): MaxAfforda
   const baseline = buildProjection(state);
   const levelAt = (amount: number): VerdictLevel =>
     assessScenario(state, baseline, buildProjection(simulatePurchase(state, amount, date))).level;
-  const upperBound = Math.max(0, Math.ceil(state.cash.checking + baseline.expectedRemainingIncome));
+  const upperBound = Math.max(0, Math.ceil(baseline.safeWeekly.currentCash + baseline.expectedRemainingIncome));
 
   const largestWhere = (ok: (level: VerdictLevel) => boolean) => {
     if (!ok(levelAt(0))) return 0;

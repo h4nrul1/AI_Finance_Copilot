@@ -18,7 +18,7 @@ export function VerdictCard({ verdict, summary, className }: { verdict: Verdict;
   const Icon = tone.icon;
 
   return (
-    <div className={cn("rounded-lg border bg-white p-4", tone.border, className)}>
+    <div className={cn("rounded-lg border bg-panel p-4", tone.border, className)}>
       <div className="flex items-start gap-3">
         <Icon className={cn("mt-0.5 shrink-0", tone.iconClass)} size={20} />
         <div className="min-w-0 flex-1 space-y-2">

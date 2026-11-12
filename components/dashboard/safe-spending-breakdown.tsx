@@ -4,7 +4,7 @@ import { Info } from "lucide-react";
 import { useState } from "react";
 import type { SafeWeeklyBreakdown } from "@/types/finance";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export function SafeSpendingBreakdown({ breakdown }: { breakdown: SafeWeeklyBreakdown }) {
   const [open, setOpen] = useState(false);
@@ -23,6 +23,20 @@ export function SafeSpendingBreakdown({ breakdown }: { breakdown: SafeWeeklyBrea
       </div>
       {open ? (
         <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+          {breakdown.currentCash !== breakdown.enteredCash ? (
+            <>
+              <Row label={`Checking you entered (${formatDate(breakdown.balanceDate)})`} value={formatCurrency(breakdown.enteredCash)} />
+              {breakdown.incomeSinceBalance > 0 ? (
+                <Row label="Planned income since" value={`+${formatCurrency(breakdown.incomeSinceBalance)}`} />
+              ) : null}
+              {breakdown.expensesSinceBalance > 0 ? (
+                <Row label="Planned expenses since" value={`-${formatCurrency(breakdown.expensesSinceBalance)}`} />
+              ) : null}
+              {breakdown.loggedSpending > 0 ? (
+                <Row label="Extra spending logged since" value={`-${formatCurrency(breakdown.loggedSpending, 2)}`} />
+              ) : null}
+            </>
+          ) : null}
           <Row label="Current cash" value={formatCurrency(breakdown.currentCash)} />
           <Row label="Expected remaining income" value={`+${formatCurrency(breakdown.expectedRemainingIncome)}`} />
           <Row label="Required remaining expenses" value={`-${formatCurrency(breakdown.requiredRemainingExpenses)}`} />
@@ -39,7 +53,7 @@ export function SafeSpendingBreakdown({ breakdown }: { breakdown: SafeWeeklyBrea
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-md bg-panel px-3 py-2">
       <dt className="text-muted">{label}</dt>
       <dd className={strong ? "font-semibold text-moss" : "font-medium text-ink"}>{value}</dd>
     </div>

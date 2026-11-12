@@ -22,7 +22,8 @@ It ships with realistic seeded data, cash-flow projections, safe weekly spending
 - Scenario Lab: a guided builder for purchases, surprise bills, investing, income loss, and bill changes, with a live example and "Add to my plan".
 - "Can I Afford This?" purchase checker.
 - Copilot chat with visible tool usage and a calculation card for every answer, including spending limits ("how much can I spend on X").
-- Spending page: log purchases, suggested categories you can override, editable categories, and clear totals.
+- Spending connected to the plan: **Extra** purchases (in categories the plan doesn't budget for) come out of current cash and this week's budget, and Overview shows how much is left this week. Purchases the plan covers are **Planned** until their category goes over plan for the month; only the part over counts. A "This Month vs. Plan" card shows each category's pace. Students can mark any purchase extra or planned.
+- Current cash keeps up on its own: planned income and bills dated after the student entered their checking balance are applied to it as their dates pass. Entering a new balance starts fresh.
 
 ## Architecture
 
@@ -163,7 +164,7 @@ If you change calculations (`lib/finance/*`) or verdict rules, add or update a t
 6. Open Copilot and ask: "Can I afford a new laptop?", then "How much can I spend without it getting tight?"
 7. Ask: "What happens if I stop working in October?"
 8. Ask: "What is an ETF?"
-9. On Spending, log a purchase and change a category.
+9. On Spending, log a $40 Target purchase (marked Extra), then check Overview: current cash drops $40 and "Left this week" shows what remains.
 10. On Semester Plan, change the verdict thresholds (e.g. 10% and 50%) and the goal; watch the purchase limits, weekly budget, and verdicts update.
 
 ## Disclaimer

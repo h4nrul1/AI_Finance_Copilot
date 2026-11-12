@@ -50,7 +50,7 @@ export default function InvestPage() {
                 onClick={() => setApproachId(item.id)}
                 className={cn(
                   "rounded-lg border p-3 text-left transition",
-                  active ? "border-moss bg-moss text-white" : "border-line bg-white text-ink hover:border-moss"
+                  active ? "border-moss bg-moss text-white" : "border-line bg-panel text-ink hover:border-moss"
                 )}
               >
                 <p className="font-semibold">{item.label}</p>
@@ -99,7 +99,7 @@ export default function InvestPage() {
 
       <PracticePortfolioCard />
 
-      <details className="rounded-lg border border-line bg-white p-4 text-sm">
+      <details className="rounded-lg border border-line bg-panel p-4 text-sm">
         <summary className="cursor-pointer font-semibold text-ink">All investment types at a glance</summary>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full border-collapse text-left">

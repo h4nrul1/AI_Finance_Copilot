@@ -1,4 +1,4 @@
-import type { FinanceState, MaxAffordableResult, SafeWeeklyBreakdown, Scenario, ScenarioSummary } from "@/types/finance";
+import type { FinanceState, MaxAffordableResult, SafeWeeklyBreakdown, Scenario, ScenarioSummary, WeekProgress } from "@/types/finance";
 import { buildProjection } from "@/lib/finance/engine";
 import { compareScenarioToBaseline, findMaxAffordable, getSpendingByCategory, ScenarioInputError, summarizeScenarioResult } from "@/lib/finance/tools";
 
@@ -14,7 +14,7 @@ export interface ToolDefinition {
 /** Deterministic data the UI renders under a copilot answer, so every number can be checked without the model. */
 export type CopilotDetail =
   | { kind: "scenario"; scenario: ScenarioSummary }
-  | { kind: "snapshot"; breakdown: SafeWeeklyBreakdown; projectedEndingCash: number; semesterHealth: string }
+  | { kind: "snapshot"; breakdown: SafeWeeklyBreakdown; projectedEndingCash: number; semesterHealth: string; thisWeek: WeekProgress }
   | { kind: "spending"; categories: Array<{ category: string; total: number }>; transactionCount: number }
   | { kind: "max-affordable"; result: MaxAffordableResult };
 
@@ -199,8 +199,14 @@ function dispatch(state: FinanceState, name: string, args: Record<string, unknow
         output: {
           today: state.semester.currentDate,
           semesterEnd: state.semester.endDate,
-          currentCash: state.cash.checking,
+          currentCash: projection.safeWeekly.currentCash,
+          extraSpendingLoggedSinceBalance: projection.safeWeekly.loggedSpending,
           savingsNotCounted: state.cash.savings,
+          thisWeek: {
+            ...projection.thisWeek,
+            budget: Math.round(projection.thisWeek.budget),
+            left: Math.round(projection.thisWeek.left)
+          },
           projectedEndingCash: projection.projectedEndingBalance,
           lowestProjectedBalance: projection.lowestProjectedBalance,
           semesterHealth: projection.semesterHealth,
@@ -211,7 +217,8 @@ function dispatch(state: FinanceState, name: string, args: Record<string, unknow
           kind: "snapshot",
           breakdown: projection.safeWeekly,
           projectedEndingCash: projection.projectedEndingBalance,
-          semesterHealth: projection.semesterHealth
+          semesterHealth: projection.semesterHealth,
+          thisWeek: projection.thisWeek
         }
       };
     }
