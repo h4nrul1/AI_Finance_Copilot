@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { demoState } from "@/lib/data/seed";
-import { detectIntent, extractAmount, extractDate, mockCopilot, runOpenAICopilot } from "@/lib/ai/copilot";
+import { detectIntent, extractAmount, extractDate, leadWithVerdict, mockCopilot, runOpenAICopilot } from "@/lib/ai/copilot";
 import { buildToolDefinitions, executeTool, type CopilotDetail } from "@/lib/ai/tool-registry";
 import * as financeTools from "@/lib/finance/tools";
 
@@ -107,6 +107,24 @@ describe("offline copilot routing", () => {
     expect(extractDate("I need to decide soon", demoState)).toBe(demoState.semester.currentDate);
     expect(extractDate("in August", demoState)).toBe(demoState.semester.currentDate);
     expect(extractDate("next week", demoState)).toBe("2026-10-06");
+  });
+});
+
+describe("verdict-first answers", () => {
+  const trip = () => executeTool(demoState, "check_purchase", { name: "Trip", amount: 500, date: "2026-11-12" });
+
+  it("puts the engine's label in front when the model leads with something else", () => {
+    expect(leadWithVerdict("If you take the trip you'd finish with $3,115.", [trip()])).toBe("Comfortable. If you take the trip you'd finish with $3,115.");
+  });
+
+  it("leaves answers that already lead with the label, and answers without a scenario", () => {
+    expect(leadWithVerdict("Comfortable. You'd finish with $3,115.", [trip()])).toBe("Comfortable. You'd finish with $3,115.");
+    expect(leadWithVerdict("You can spend about $235/week.", [executeTool(demoState, "get_semester_snapshot", {})])).toBe("You can spend about $235/week.");
+  });
+
+  it("leaves comparisons of scenarios with different verdicts to the model", () => {
+    const big = executeTool(demoState, "check_purchase", { name: "Trip", amount: 3000, date: "2026-12-10" });
+    expect(leadWithVerdict("A $500 trip is fine; a $3,000 one is not.", [trip(), big])).toBe("A $500 trip is fine; a $3,000 one is not.");
   });
 });
 

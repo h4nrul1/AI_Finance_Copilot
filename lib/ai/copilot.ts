@@ -219,6 +219,22 @@ interface OpenAIResponse {
   choices?: Array<{ message?: { content?: string | null; tool_calls?: OpenAIToolCall[] } }>;
 }
 
+/**
+ * The engine's verdict label must open the answer. The prompt asks for this, but models sometimes lead with the
+ * headline instead (measured by `npm run eval`), so when one scenario ran and the first sentence lacks its label,
+ * the label is put in front.
+ */
+export function leadWithVerdict(message: string, executions: ToolExecution[]) {
+  const labels = [
+    ...new Set(executions.flatMap((execution) => (execution.ok && execution.detail?.kind === "scenario" ? [execution.detail.scenario.verdict.label] : [])))
+  ];
+  if (labels.length !== 1) return message;
+  const [label] = labels;
+  const text = message.trim();
+  const firstSentence = text.split(/(?<=[.!?])\s+/)[0] ?? "";
+  return firstSentence.toLowerCase().includes(label.toLowerCase()) ? message : `${label}. ${text}`;
+}
+
 function parseArguments(raw: string): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(raw || "{}");
@@ -259,7 +275,7 @@ export async function runOpenAICopilot(apiKey: string, message: string, state: F
 
     if (!reply.tool_calls?.length) {
       if (!reply.content) throw new Error("OpenAI returned an empty message");
-      return toAnswer(reply.content, "openai", executions);
+      return toAnswer(leadWithVerdict(reply.content, executions), "openai", executions);
     }
 
     messages.push({ role: "assistant", content: reply.content ?? null, tool_calls: reply.tool_calls });

@@ -117,7 +117,7 @@ export function buildToolDefinitions(state: FinanceState): ToolDefinition[] {
       function: {
         name: "find_max_affordable",
         description:
-          "Find the most the student can spend on a one-time purchase on a date: the largest amount that stays 'Comfortable' and the largest that is only 'Fits, but tight'. Use for 'how much can I spend on X', 'what's my budget for X', or 'how much can I spend without it getting tight'.",
+          "Find the most the student can spend on a one-time purchase on a date: the largest amount that stays 'Comfortable' and the largest that is only 'Fits, but tight'. Use for 'how much can I spend on X', 'what's my budget for X', or 'how much can I spend without it getting tight'. Only when no amount is given; to check a specific price, use check_purchase.",
         parameters: {
           type: "object",
           properties: { date: dateParam },
@@ -131,7 +131,7 @@ export function buildToolDefinitions(state: FinanceState): ToolDefinition[] {
       function: {
         name: "simulate_investment",
         description:
-          "Simulate moving cash out of checking into an investment account on a date. Returns the liquidity impact and a verdict. Never recommends specific securities.",
+          "Simulate moving cash out of checking into an investment account on a date (an index fund, ETF, stocks, or any brokerage account). Returns the liquidity impact and a verdict. Never recommends specific securities.",
         parameters: {
           type: "object",
           properties: { amount: { type: "number", description: "Dollars moved to investing." }, date: dateParam },
