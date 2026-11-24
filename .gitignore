@@ -29,3 +29,6 @@ yarn-error.log*
 
 # Vercel
 .vercel
+
+# Copilot eval reports (npm run eval)
+evals/results/

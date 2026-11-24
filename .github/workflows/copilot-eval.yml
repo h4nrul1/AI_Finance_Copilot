@@ -1,0 +1,57 @@
+name: Copilot eval
+
+# Live model calls cost money, so this is not part of CI. It runs nightly, on demand, and on pull requests that get
+# the "run-evals" label. Needs the OPENAI_API_KEY repository secret.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "OpenAI model (blank uses the OPENAI_MODEL variable, then gpt-4o-mini)"
+        required: false
+      repeat:
+        description: "Runs per case, to measure flakiness"
+        required: false
+        default: "1"
+      filter:
+        description: "Only cases whose id contains this, or with this tag"
+        required: false
+  pull_request:
+    types: [labeled, synchronize]
+
+concurrency:
+  group: copilot-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-evals')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run copilot eval
+        run: npm run eval
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          EVAL_MODEL: ${{ inputs.model }}
+          EVAL_REPEAT: ${{ inputs.repeat }}
+          EVAL_FILTER: ${{ inputs.filter }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-eval-report
+          path: evals/results/
+          if-no-files-found: ignore

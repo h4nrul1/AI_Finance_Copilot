@@ -52,6 +52,8 @@ How a copilot question is answered:
 
 Without an API key, a keyword-based fallback calls the same tools, so the demo behaves the same offline.
 
+Copilot quality is measured with `npm run eval`: about 40 fixed questions scored on tool choice, arguments, verdict wording, and whether every number came from a tool. See [evals/README.md](evals/README.md).
+
 ## Tech Stack
 
 - Next.js App Router
